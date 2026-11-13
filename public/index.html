@@ -2,7 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1020" />
     <title>Asylum Break</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -15,32 +16,38 @@
       </div>
       <div id="helpPanel">
         <strong>Controls</strong><br />
-        WASD = move<br />
-        E = use stairs / interact<br />
+        WASD / arrows = move<br />
+        E = stairs / interact<br />
         Shift = sprint<br />
-        Q = open Director door / use ability
+        Q = role ability
       </div>
       <div id="inventoryPanel">
         <strong>Inventory</strong>
-        <ul id="inventoryList">
-          <li>Empty</li>
-        </ul>
+        <ul id="inventoryList"><li>Empty</li></ul>
       </div>
+    </div>
+
+    <div id="mobileControls" aria-label="Touch controls">
+      <div id="movePad" aria-label="Movement joystick">
+        <div id="moveStick"></div>
+      </div>
+      <div id="mobileActions">
+        <button id="sprintButton" class="mobileAction" type="button">Sprint</button>
+        <button id="interactButton" class="mobileAction" type="button">Interact</button>
+        <button id="abilityButton" class="mobileAction primary" type="button">Ability</button>
+      </div>
+      <button id="fullscreenButton" type="button" aria-label="Enter fullscreen">⛶ Fullscreen</button>
     </div>
 
     <div id="joinScreen">
       <div class="panel">
         <h1>Asylum Break</h1>
-        <label>
-          Name
-          <input id="playerName" maxlength="16" value="Player" />
-        </label>
-
+        <label>Name<input id="playerName" maxlength="16" value="Player" autocomplete="nickname" /></label>
         <div class="roles">
-          <button class="roleButton" data-role="patient">Patient</button>
-          <button class="roleButton" data-role="medic">Medic</button>
-          <button class="roleButton" data-role="orderly">Orderly</button>
-          <button class="roleButton" data-role="director">Director</button>
+          <button class="roleButton" data-role="patient" type="button">Patient</button>
+          <button class="roleButton" data-role="medic" type="button">Medic</button>
+          <button class="roleButton" data-role="orderly" type="button">Orderly</button>
+          <button class="roleButton" data-role="director" type="button">Director</button>
         </div>
       </div>
     </div>
