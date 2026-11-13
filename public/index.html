@@ -14,31 +14,18 @@
         <span id="floorLabel">Floor: U3</span>
         <span id="statusLabel">Waiting</span>
       </div>
-      <div id="helpPanel">
-        <strong>Controls</strong><br />
-        WASD / arrows = move<br />
-        E = stairs / interact<br />
-        Shift = sprint<br />
-        Q = role ability
-      </div>
-      <div id="inventoryPanel">
-        <strong>Inventory</strong>
-        <ul id="inventoryList"><li>Empty</li></ul>
-      </div>
+      <div id="helpPanel"><strong>Controls</strong><br />WASD / arrows = move<br />Drag = rotate camera · E = stairs<br />1–4 = equip item · Q = ability</div>
+      <div id="inventoryPanel"><strong>Equipment — tap/click to equip</strong><div id="equipmentSlots"></div></div>
     </div>
-
     <div id="mobileControls" aria-label="Touch controls">
-      <div id="movePad" aria-label="Movement joystick">
-        <div id="moveStick"></div>
-      </div>
+      <div id="movePad" aria-label="Movement joystick"><div id="moveStick"></div></div>
       <div id="mobileActions">
         <button id="sprintButton" class="mobileAction" type="button">Sprint</button>
-        <button id="interactButton" class="mobileAction" type="button">Interact</button>
+        <button id="interactButton" class="mobileAction" type="button">Stairs</button>
         <button id="abilityButton" class="mobileAction primary" type="button">Ability</button>
       </div>
       <button id="fullscreenButton" type="button" aria-label="Enter fullscreen">⛶ Fullscreen</button>
     </div>
-
     <div id="joinScreen">
       <div class="panel">
         <h1>Asylum Break</h1>
@@ -51,7 +38,6 @@
         </div>
       </div>
     </div>
-
     <script src="/socket.io/socket.io.js"></script>
     <script type="module" src="./game.js"></script>
   </body>
