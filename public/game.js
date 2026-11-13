@@ -11,8 +11,7 @@ const roles = {
     items: ['Riot shield', 'Taser', 'Stun baton', 'Arrest cuffs'],
     label: 'Orderly',
     badge: 'ORDERLY',
-    palette: ['#3b82f6', '#0f172a', '#dbeafe', '#8ec5ff'],
-    summary: 'Security and control specialist.',
+    gradients: ['linear-gradient(135deg, #0f172a 0%, #1d4ed8 52%, #7dd3fc 100%)', 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)'],
   },
   medic: {
     color: 0x34d399,
@@ -23,8 +22,7 @@ const roles = {
     items: ['Small med kit', 'Medium med kit'],
     label: 'Medic',
     badge: 'MEDIC',
-    palette: ['#8b5cf6', '#e0f2fe', '#d1fae5', '#f8fafc'],
-    summary: 'Support and healing specialist.',
+    gradients: ['linear-gradient(135deg, #0f172a 0%, #10b981 52%, #dcfce7 100%)', 'linear-gradient(135deg, #0b1320 0%, #065f46 100%)'],
   },
   director: {
     color: 0xa78bfa,
@@ -35,8 +33,7 @@ const roles = {
     items: ['Stun baton', 'Ignotus shield', 'Tablet'],
     label: 'Facility Director',
     badge: 'DIRECTOR',
-    palette: ['#f59e0b', '#111827', '#f3e8ff', '#ddd6fe'],
-    summary: 'Command authority and lockdown control.',
+    gradients: ['linear-gradient(135deg, #111827 0%, #7c3aed 52%, #fbbf24 100%)', 'linear-gradient(135deg, #0b1020 0%, #4c1d95 100%)'],
   },
   patient: {
     color: 0xf87171,
@@ -47,8 +44,7 @@ const roles = {
     items: ['Glass shard'],
     label: 'Patient',
     badge: 'PATIENT',
-    palette: ['#fca5a5', '#111827', '#fff7ed', '#fecaca'],
-    summary: 'Aggressive escape runner and chaos agent.',
+    gradients: ['linear-gradient(135deg, #111827 0%, #ef4444 52%, #fecaca 100%)', 'linear-gradient(135deg, #1f2937 0%, #7f1d1d 100%)'],
   },
 };
 
@@ -85,17 +81,10 @@ fillLight.position.set(0, 22, 0);
 scene.add(fillLight);
 
 const floors = [];
-const player = { id: null, role: null, x: 0, z: 0, floor: 0, name: 'Player', mesh: null, velocity: { x: 0, z: 0 } };
+const player = { id: null, role: null, x: 0, z: 0, floor: 0, name: 'Player', mesh: null };
 const otherPlayers = new Map();
 const keys = Object.create(null);
-const mobile = {
-  active: false,
-  dx: 0,
-  dy: 0,
-  pointerId: null,
-  centerX: 0,
-  centerY: 0,
-};
+const mobile = { active: false, dx: 0, dy: 0, pointerId: null };
 let yaw = 0;
 let pitch = 0.3;
 let dragging = false;
@@ -111,15 +100,6 @@ const labGlass = new THREE.MeshStandardMaterial({ color: 0x9ad8ec, roughness: 0.
 
 function addBox(group, x, y, z, w, h, d, material) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
-  mesh.position.set(x, y, z);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  group.add(mesh);
-  return mesh;
-}
-
-function addCylinder(group, x, y, z, radius, height, material) {
-  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, 18), material);
   mesh.position.set(x, y, z);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -172,20 +152,10 @@ function buildPatientWard(group, y) {
   addBox(group, -18, y + 2.12, 56, 12, 0.14, 3.8, mat(0x38bdf8));
   addSign(group, 'PATIENT WARD · RECOVERY', 0, y + 5.6, -64, '#34d399');
   addSign(group, 'NURSING STATION', -18, y + 4.1, 52, '#fbbf24');
-
-  for (const [x, z] of [[-30, 0], [30, 0], [0, 54]]) {
-    addBox(group, x, y + 1.5, z, 0.6, 3, 0.6, mat(0x76513a));
-    const crown = new THREE.Mesh(new THREE.ConeGeometry(2.5, 5, 7), mat(0x38694c));
-    crown.position.set(x, y + 5, z);
-    crown.castShadow = true;
-    crown.receiveShadow = true;
-    group.add(crown);
-  }
 }
 
 function buildLabs(group, y) {
   addBox(group, 0, y + 0.03, 0, 178, 0.12, 130, mat(0x777a7b));
-
   for (const side of [-1, 1]) {
     for (const x of [-66, -22, 22, 66]) {
       const z = side * 37;
@@ -196,12 +166,10 @@ function buildLabs(group, y) {
       addSign(group, side < 0 ? 'LABORATORY' : 'EXPERIMENTAL DIVISION', x, y + 5.3, side * 34, '#a78bfa');
     }
   }
-
   for (const x of [-28, 0, 28]) {
     addBox(group, x, y + 0.55, 0, 10, 1.1, 3, mat(0x687482));
     addBox(group, x, y + 1.15, 0, 8, 0.14, 2, mat(0x47aeb7));
   }
-
   addSign(group, 'RESEARCH LABS · RESTRICTED', 0, y + 5.5, -63, '#38bdf8');
 }
 
@@ -262,31 +230,25 @@ function makePlayerCharacter(roleKey, isLocal = false) {
 
   const torso = makeBodyPart(bodyMat, 1.15, 1.65, 0.52, 0, 1.45, 0);
   group.add(torso);
-
   const waist = makeBodyPart(darkMat, 1.2, 0.52, 0.52, 0, 0.7, 0);
   group.add(waist);
-
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.46, 24, 18), skinMat);
   head.position.y = 2.48;
   head.castShadow = true;
   head.receiveShadow = true;
   group.add(head);
-
   const hair = new THREE.Mesh(new THREE.SphereGeometry(0.48, 22, 18, 0, Math.PI * 2, 0, Math.PI * 0.85), hairMat);
   hair.position.set(0, 2.9, -0.04);
   hair.scale.set(1.08, 1.15, 1.08);
   hair.castShadow = true;
   group.add(hair);
-
   const visor = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.22, 0.1), mat(0x1d4ed8, 0.5, 0.25));
   visor.position.set(0, 2.48, 0.38);
-  visor.castShadow = true;
   group.add(visor);
 
   const leftArm = makeBodyPart(bodyMat, 0.38, 1.25, 0.38, -0.82, 1.38, 0);
   const rightArm = makeBodyPart(bodyMat, 0.38, 1.25, 0.38, 0.82, 1.38, 0);
   group.add(leftArm, rightArm);
-
   const leftLeg = makeBodyPart(darkMat, 0.42, 1.35, 0.42, -0.28, -0.18, 0);
   const rightLeg = makeBodyPart(darkMat, 0.42, 1.35, 0.42, 0.28, -0.18, 0);
   group.add(leftLeg, rightLeg);
@@ -306,7 +268,6 @@ function makePlayerCharacter(roleKey, isLocal = false) {
     badge.rotation.x = Math.PI / 4;
     group.add(badge);
   }
-
   if (roleKey === 'orderly') {
     const visorGlint = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.1, 0.05), mat(0x93c5fd, 0.4));
     visorGlint.position.set(0, 2.52, 0.44);
@@ -316,13 +277,11 @@ function makePlayerCharacter(roleKey, isLocal = false) {
     baton.rotation.z = -0.7;
     group.add(baton);
   }
-
   if (roleKey === 'director') {
     const badge = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.13, 0.08), mat(0xfbbf24, 0.6));
     badge.position.set(0.12, 2.12, 0.44);
     group.add(badge);
   }
-
   if (roleKey === 'patient') {
     const shard = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.7, 4), mat(0xf1f5f9, 0.25));
     shard.position.set(0.8, 1.2, 0.35);
@@ -334,54 +293,18 @@ function makePlayerCharacter(roleKey, isLocal = false) {
   return group;
 }
 
-function generateRolePortraitSvg(roleKey) {
+function applyRoleCardArt(button, roleKey) {
+  const art = button.querySelector('.role-card-art');
+  if (!art) return;
   const role = roles[roleKey] || roles.patient;
-  const [a, b, c, d] = role.palette;
-
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 420">
-      <defs>
-        <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0%" stop-color="#040c16"/>
-          <stop offset="100%" stop-color="${b}"/>
-        </linearGradient>
-        <linearGradient id="body" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0%" stop-color="${a}"/>
-          <stop offset="100%" stop-color="${c}"/>
-        </linearGradient>
-      </defs>
-      <rect width="420" height="420" fill="url(#bg)" rx="32"/>
-      <circle cx="140" cy="64" r="84" fill="rgba(255,255,255,0.08)"/>
-      <rect x="104" y="110" width="210" height="260" rx="26" fill="rgba(15,23,42,0.55)" stroke="rgba(255,255,255,0.15)"/>
-      <ellipse cx="208" cy="181" rx="75" ry="77" fill="#f3d2b7"/>
-      <path d="M144 178c24-64 109-74 132 0v14c-16 18-42 30-66 30s-47-10-66-30v-14z" fill="${d}"/>
-      <path d="M156 176c5-44 31-72 52-72s47 26 52 70" fill="none" stroke="${b}" stroke-width="16" stroke-linecap="round"/>
-      <rect x="150" y="198" width="118" height="70" rx="28" fill="url(#body)"/>
-      <rect x="165" y="تنا" width="90" height="100" rx="18" fill="none" opacity="0"/>
-      <rect x="176" y="215" width="64" height="14" rx="7" fill="${b}"/>
-      <circle cx="177" cy="193" r="10" fill="#0f172a"/>
-      <circle cx="244" cy="193" r="10" fill="#0f172a"/>
-      <circle cx="174" cy="190" r="4" fill="#ffffff"/>
-      <circle cx="241" cy="190" r="4" fill="#ffffff"/>
-      <path d="M177 230c14 18 34 24 57 0" fill="none" stroke="#0f172a" stroke-width="8" stroke-linecap="round"/>
-      <rect x="152" y="265" width="28" height="86" rx="12" fill="${b}"/>
-      <rect x="238" y="265" width="28" height="86" rx="12" fill="${b}"/>
-      <rect x="178" y="265" width="28" height="86" rx="12" fill="${b}"/>
-      <rect x="212" y="265" width="28" height="86" rx="12" fill="${b}"/>
-      <path d="M128 290l26 28c6 7 18 5 22-4l9-29-57 5zm263 0l-26 28c-6 7-18 5-22-4l-9-29 57 5z" fill="rgba(255,255,255,0.08)"/>
-      <text x="210" y="365" text-anchor="middle" font-size="28" fill="${d}" font-weight="700" letter-spacing="5">${role.badge}</text>
-    </svg>
-  `)}`;
+  art.style.background = role.gradients[0];
+  art.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.1), 0 18px 28px rgba(15,23,42,0.3)';
 }
 
 function setupRoleCards() {
-  const cardButtons = document.querySelectorAll('.roleButton');
-  cardButtons.forEach((button) => {
+  document.querySelectorAll('.roleButton').forEach((button) => {
     const roleKey = button.dataset.role;
-    const art = button.querySelector('.role-card-art');
-    if (art) {
-      art.style.backgroundImage = `url("${generateRolePortraitSvg(roleKey)}")`;
-    }
+    applyRoleCardArt(button, roleKey);
     button.addEventListener('click', () => chooseRole(roleKey));
   });
 }
@@ -409,12 +332,8 @@ function setFloor(index) {
 function updateHealth(health) {
   const healthFill = document.getElementById('healthFill');
   const healthText = document.getElementById('healthText');
-  if (healthFill) {
-    healthFill.style.width = `${health}%`;
-  }
-  if (healthText) {
-    healthText.textContent = `${Math.round(health)} / 100%`;
-  }
+  if (healthFill) healthFill.style.width = `${health}%`;
+  if (healthText) healthText.textContent = `${Math.round(health)} / 100%`;
 }
 
 function populateEquipment(items) {
@@ -453,7 +372,6 @@ function chooseRole(role) {
   scene.add(player.mesh);
 
   setFloor(selected.floor);
-
   document.getElementById('roleLabel').textContent = `Role: ${selected.label}`;
   document.getElementById('statusLabel').textContent = `Ready: ${selected.label}`;
 
@@ -509,7 +427,6 @@ socket.on('playersState', (list) => {
 
 window.addEventListener('keydown', (event) => {
   keys[event.code] = true;
-
   if (event.code === 'KeyE' && player.role) {
     const nearStairs = Math.min(Math.hypot(player.x - 78, player.z), Math.hypot(player.x + 78, player.z)) < 12;
     if (nearStairs) {
@@ -518,7 +435,6 @@ window.addEventListener('keydown', (event) => {
       socket.emit('updatePlayer', { x: player.x, y: floorY[player.floor], z: player.z, floor: player.floor });
     }
   }
-
   if (event.code === 'KeyQ' && player.role) {
     socket.emit('useAbility', { ability: 'ability' });
   }
@@ -562,7 +478,7 @@ function updateJoystickFromPointer(clientX, clientY) {
   const nx = Math.cos(angle) * clamped;
   const ny = Math.sin(angle) * clamped;
 
-  stick.style.transform = `translate(${nx - 22}px, ${ny - 22}px)`;
+  stick.style.transform = `translate(${nx}px, ${ny}px)`;
   mobile.dx = len > 0 ? (nx / radius) : 0;
   mobile.dy = len > 0 ? (ny / radius) : 0;
 }
@@ -595,7 +511,7 @@ if (joystickZone && movePad && moveStick) {
     mobile.active = false;
     mobile.pointerId = null;
     movePad.classList.remove('visible');
-    moveStick.style.transform = 'translate(-50%, -50%)';
+    moveStick.style.transform = 'translate(0px, 0px)';
     mobile.dx = 0;
     mobile.dy = 0;
   });
@@ -603,7 +519,7 @@ if (joystickZone && movePad && moveStick) {
   joystickZone.addEventListener('pointerleave', () => {
     mobile.active = false;
     movePad.classList.remove('visible');
-    moveStick.style.transform = 'translate(-50%, -50%)';
+    moveStick.style.transform = 'translate(0px, 0px)';
     mobile.dx = 0;
     mobile.dy = 0;
   });
@@ -649,11 +565,8 @@ if (abilityButton) {
 
 document.getElementById('fullscreenButton')?.addEventListener('click', async () => {
   try {
-    if (!document.fullscreenElement) {
-      await document.documentElement.requestFullscreen();
-    } else {
-      await document.exitFullscreen();
-    }
+    if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+    else await document.exitFullscreen();
   } catch (error) {
     console.warn('Fullscreen not available', error);
   }
@@ -663,9 +576,7 @@ function animate() {
   requestAnimationFrame(animate);
 
   const isTouch = window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
-  if (isTouch) {
-    document.body.classList.add('touch-device');
-  }
+  if (isTouch) document.body.classList.add('touch-device');
 
   const step = keys.ShiftLeft ? 0.42 : 0.22;
 
