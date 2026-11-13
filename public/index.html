@@ -13,28 +13,32 @@
   </div>
   <div id="hud" aria-live="polite">
     <div id="topBar"><span class="brand-mark">AB</span><span id="roleLabel">ROLE · NONE</span><span id="floorLabel">FLOOR · GROUND</span><span id="statusLabel">SELECT A CLASS</span></div>
-    <div id="healthPanel"><div class="health-heading"><strong>VITALS</strong><span id="healthText">100 / 100</span></div><div class="health-track"><div id="healthFill"></div></div><div class="health-caption">CONDITION · STABLE</div></div>
-    <div id="objectivePanel"><span class="eyebrow">CURRENT OBJECTIVE</span><strong id="objectiveText">Choose your role to enter the facility</strong><span id="objectiveHint">The lockdown is active. Find a way through.</span></div>
+    <div id="healthPanel"><div class="health-heading"><strong>VITALS</strong><span id="healthText">100 / 100</span></div><div class="health-track"><div id="healthFill"></div></div></div>
+    <div id="objectivePanel"><span class="eyebrow">CURRENT OBJECTIVE</span><strong id="objectiveText">Choose your role to enter the facility</strong><span id="objectiveHint">The lockdown is active across the site.</span></div>
     <div id="toast" role="status"></div>
     <div id="inventoryPanel"><div class="panel-heading"><strong>LOADOUT</strong><span>Tap or press 1–4</span></div><div id="equipmentSlots"></div></div>
     <div id="helpPanel"><strong>FIELD MANUAL</strong><br />WASD / arrows · move<br />Shift · sprint<br />Drag · look around<br />E · use nearby stairs<br />Q · class ability</div>
   </div>
   <div id="mobileControls" aria-label="Touch controls">
     <div id="joystickZone" aria-label="Move joystick"><div id="movePad"><div id="moveStick"></div></div></div>
-    <div id="mobileActions"><button id="sprintButton" class="mobileAction" type="button">SPRINT</button><button id="interactButton" class="mobileAction" type="button">STAIRS</button><button id="abilityButton" class="mobileAction primary" type="button">ABILITY</button></div>
-    <button id="fullscreenButton" type="button" aria-label="Toggle fullscreen">⛶</button>
+    <div id="mobileActions"><button id="sprintButton" class="mobileAction" type="button">SPRINT</button><button id="interactButton" class="mobileAction" type="button">STAIRS</button><button id="abilityButton" class="mobileAction" type="button">ABILITY</button><button id="fullscreenButton" class="mobileAction" type="button" aria-label="Toggle fullscreen">⛶</button></div>
+  </div>
+  <div id="tabletPanel" class="tablet-panel hidden" aria-label="Tablet camera presets">
+    <strong>TABLET CAMERAS</strong>
+    <div id="cameraPresets"></div>
   </div>
   <main id="joinScreen">
     <div class="join-backdrop"></div>
     <section class="panel">
-      <div class="title-wrap"><span class="eyebrow">CONTAINMENT BREACH · MULTIPLAYER PROTOTYPE</span><h1>ASYLUM<br /><em>BREAK</em></h1><p class="intro">The night shift is over. The lockdown isn't.</p></div>
+      <div class="title-wrap"><span class="eyebrow">CONTAINMENT BREACH · MULTIPLAYER PROTOTYPE</span><h1>ASYLUM<br /><em>BREAK</em></h1><p class="intro">The night shift is over. The lockdown is active, and each role is trying to reach a different outcome.</p></div>
       <label class="name-field">CALLSIGN<input id="playerName" maxlength="16" value="Player" autocomplete="nickname" /></label>
+      <div class="team-picker" id="teamPicker" aria-label="Team auswählen"></div>
       <div class="section-heading"><span>CHOOSE YOUR CLASS</span><span>01 — 04</span></div>
       <div class="roles" id="roleGrid">
-        <button class="roleButton orderly-card" data-role="orderly" type="button"><span class="role-card-art"><span class="silhouette orderly-silhouette"></span><span class="card-index">01</span></span><span class="role-card-copy"><strong>ORDERLY</strong><small>Containment · Security</small></span><span class="card-arrow">↗</span></button>
-        <button class="roleButton medic-card" data-role="medic" type="button"><span class="role-card-art"><span class="silhouette medic-silhouette"></span><span class="card-index">02</span></span><span class="role-card-copy"><strong>MEDIC</strong><small>Support · Recovery</small></span><span class="card-arrow">↗</span></button>
-        <button class="roleButton director-card" data-role="director" type="button"><span class="role-card-art"><span class="silhouette director-silhouette"></span><span class="card-index">03</span></span><span class="role-card-copy"><strong>FACILITY DIRECTOR</strong><small>Command · Access</small></span><span class="card-arrow">↗</span></button>
-        <button class="roleButton patient-card" data-role="patient" type="button"><span class="role-card-art"><span class="silhouette patient-silhouette"></span><span class="card-index">04</span></span><span class="role-card-copy"><strong>PATIENT</strong><small>Escape · Survival</small></span><span class="card-arrow">↗</span></button>
+        <button class="roleButton orderly-card" data-role="orderly" type="button"><span class="role-card-art"><span class="silhouette orderly-silhouette"></span><span class="card-index">01</span></span><span class="role-meta"><span>Orderly</span><small>Containment</small></span></button>
+        <button class="roleButton medic-card" data-role="medic" type="button"><span class="role-card-art"><span class="silhouette medic-silhouette"></span><span class="card-index">02</span></span><span class="role-meta"><span>Medic</span><small>Field treatment</small></span></button>
+        <button class="roleButton director-card" data-role="director" type="button"><span class="role-card-art"><span class="silhouette director-silhouette"></span><span class="card-index">03</span></span><span class="role-meta"><span>Director</span><small>Override access</small></span></button>
+        <button class="roleButton patient-card" data-role="patient" type="button"><span class="role-card-art"><span class="silhouette patient-silhouette"></span><span class="card-index">04</span></span><span class="role-meta"><span>Patient</span><small>Adrenaline</small></span></button>
       </div>
       <footer class="join-footer"><span><i></i> FACILITY NETWORK READY</span><span>SELECT A CLASS TO DEPLOY</span></footer>
     </section>
