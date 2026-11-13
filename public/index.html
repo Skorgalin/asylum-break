@@ -1,26 +1,46 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="de">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b1020" />
-  <title>Asylum Break</title>
-  <link rel="stylesheet" href="./style.css" />
+  <meta name="theme-color" content="#07111d" />
+  <title>Asylum Break — Containment Breach</title>
+  <link rel="stylesheet" href="./style.css?v=20261113-1" />
 </head>
 <body>
-  <div id="hud">
-    <div id="topBar"><span id="roleLabel">Role: None</span><span id="floorLabel">Floor: U3</span><span id="statusLabel">Waiting</span></div>
-    <div id="healthPanel"><div class="health-heading"><strong>HEALTH</strong><span id="healthText">100 / 100%</span></div><div class="health-track"><div id="healthFill"></div></div></div>
-    <div id="helpPanel"><strong>Controls</strong><br />WASD / arrows = move<br />Drag = rotate camera · E = stairs<br />1–4 = equip · Q = ability</div>
-    <div id="inventoryPanel"><strong>Equipment — tap/click to equip</strong><div id="equipmentSlots"></div></div>
+  <div id="loadingScreen" class="loading-screen" aria-live="polite">
+    <div class="loader-mark">AB</div><strong>INITIALIZING FACILITY</strong><span id="loadingStatus">Loading 3D environment…</span>
   </div>
-  <div id="mobileControls">
-    <div id="joystickZone" aria-label="Touch here in the lower-left area to move"><div id="movePad"><div id="moveStick"></div></div></div>
-    <div id="mobileActions"><button id="sprintButton" class="mobileAction" type="button">Sprint</button><button id="interactButton" class="mobileAction" type="button">Stairs</button><button id="abilityButton" class="mobileAction primary" type="button">Ability</button></div>
-    <button id="fullscreenButton" type="button">⛶ Fullscreen</button>
+  <div id="hud" aria-live="polite">
+    <div id="topBar"><span class="brand-mark">AB</span><span id="roleLabel">ROLE · NONE</span><span id="floorLabel">FLOOR · GROUND</span><span id="statusLabel">SELECT A CLASS</span></div>
+    <div id="healthPanel"><div class="health-heading"><strong>VITALS</strong><span id="healthText">100 / 100</span></div><div class="health-track"><div id="healthFill"></div></div><div class="health-caption">CONDITION · STABLE</div></div>
+    <div id="objectivePanel"><span class="eyebrow">CURRENT OBJECTIVE</span><strong id="objectiveText">Choose your role to enter the facility</strong><span id="objectiveHint">The lockdown is active. Find a way through.</span></div>
+    <div id="toast" role="status"></div>
+    <div id="inventoryPanel"><div class="panel-heading"><strong>LOADOUT</strong><span>Tap or press 1–4</span></div><div id="equipmentSlots"></div></div>
+    <div id="helpPanel"><strong>FIELD MANUAL</strong><br />WASD / arrows · move<br />Shift · sprint<br />Drag · look around<br />E · use nearby stairs<br />Q · class ability</div>
   </div>
-  <div id="joinScreen"><div class="panel"><h1>Asylum Break</h1><label>Name<input id="playerName" maxlength="16" value="Player" autocomplete="nickname" /></label><div class="roles"><button class="roleButton" data-role="patient" type="button">Patient</button><button class="roleButton" data-role="medic" type="button">Medic</button><button class="roleButton" data-role="orderly" type="button">Orderly</button><button class="roleButton" data-role="director" type="button">Director</button></div></div></div>
+  <div id="mobileControls" aria-label="Touch controls">
+    <div id="joystickZone" aria-label="Move joystick"><div id="movePad"><div id="moveStick"></div></div></div>
+    <div id="mobileActions"><button id="sprintButton" class="mobileAction" type="button">SPRINT</button><button id="interactButton" class="mobileAction" type="button">STAIRS</button><button id="abilityButton" class="mobileAction primary" type="button">ABILITY</button></div>
+    <button id="fullscreenButton" type="button" aria-label="Toggle fullscreen">⛶</button>
+  </div>
+  <main id="joinScreen">
+    <div class="join-backdrop"></div>
+    <section class="panel">
+      <div class="title-wrap"><span class="eyebrow">CONTAINMENT BREACH · MULTIPLAYER PROTOTYPE</span><h1>ASYLUM<br /><em>BREAK</em></h1><p class="intro">The night shift is over. The lockdown isn't.</p></div>
+      <label class="name-field">CALLSIGN<input id="playerName" maxlength="16" value="Player" autocomplete="nickname" /></label>
+      <div class="section-heading"><span>CHOOSE YOUR CLASS</span><span>01 — 04</span></div>
+      <div class="roles" id="roleGrid">
+        <button class="roleButton orderly-card" data-role="orderly" type="button"><span class="role-card-art"><span class="silhouette orderly-silhouette"></span><span class="card-index">01</span></span><span class="role-card-copy"><strong>ORDERLY</strong><small>Containment · Security</small></span><span class="card-arrow">↗</span></button>
+        <button class="roleButton medic-card" data-role="medic" type="button"><span class="role-card-art"><span class="silhouette medic-silhouette"></span><span class="card-index">02</span></span><span class="role-card-copy"><strong>MEDIC</strong><small>Support · Recovery</small></span><span class="card-arrow">↗</span></button>
+        <button class="roleButton director-card" data-role="director" type="button"><span class="role-card-art"><span class="silhouette director-silhouette"></span><span class="card-index">03</span></span><span class="role-card-copy"><strong>FACILITY DIRECTOR</strong><small>Command · Access</small></span><span class="card-arrow">↗</span></button>
+        <button class="roleButton patient-card" data-role="patient" type="button"><span class="role-card-art"><span class="silhouette patient-silhouette"></span><span class="card-index">04</span></span><span class="role-card-copy"><strong>PATIENT</strong><small>Escape · Survival</small></span><span class="card-arrow">↗</span></button>
+      </div>
+      <footer class="join-footer"><span><i></i> FACILITY NETWORK READY</span><span>SELECT A CLASS TO DEPLOY</span></footer>
+    </section>
+  </main>
+  <div id="crosshair" aria-hidden="true"><i></i><b></b></div>
   <script src="/socket.io/socket.io.js"></script>
-  <script type="module" src="./game.js"></script>
+  <script type="module" src="./game.js?v=20261113-1"></script>
 </body>
 </html>
