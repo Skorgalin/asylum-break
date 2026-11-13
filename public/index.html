@@ -1,26 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b1020" />
-  <title>Asylum Break</title>
-  <link rel="stylesheet" href="./style.css" />
-</head>
-<body>
-  <div id="hud">
-    <div id="topBar"><span id="roleLabel">Role: None</span><span id="floorLabel">Floor: U3</span><span id="statusLabel">Waiting</span></div>
-    <div id="healthPanel"><div class="health-heading"><strong>HEALTH</strong><span id="healthText">100 / 100%</span></div><div class="health-track"><div id="healthFill"></div></div></div>
-    <div id="helpPanel"><strong>Controls</strong><br />WASD / arrows = move<br />Drag = rotate camera · E = stairs<br />1–4 = equip · Q = ability</div>
-    <div id="inventoryPanel"><strong>Equipment — tap/click to equip</strong><div id="equipmentSlots"></div></div>
-  </div>
-  <div id="mobileControls">
-    <div id="joystickZone" aria-label="Touch here in the lower-left area to move"><div id="movePad"><div id="moveStick"></div></div></div>
-    <div id="mobileActions"><button id="sprintButton" class="mobileAction" type="button">Sprint</button><button id="interactButton" class="mobileAction" type="button">Stairs</button><button id="abilityButton" class="mobileAction primary" type="button">Ability</button></div>
-    <button id="fullscreenButton" type="button">⛶ Fullscreen</button>
-  </div>
-  <div id="joinScreen"><div class="panel"><h1>Asylum Break</h1><label>Name<input id="playerName" maxlength="16" value="Player" autocomplete="nickname" /></label><div class="roles"><button class="roleButton" data-role="patient" type="button">Patient</button><button class="roleButton" data-role="medic" type="button">Medic</button><button class="roleButton" data-role="orderly" type="button">Orderly</button><button class="roleButton" data-role="director" type="button">Director</button></div></div></div>
-  <script src="/socket.io/socket.io.js"></script>
-  <script type="module" src="./game.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0b1020" />
+    <title>Asylum Break</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="hud">
+      <div id="topBar">
+        <span id="roleLabel">Role: None</span>
+        <span id="floorLabel">Floor: U3</span>
+        <span id="statusLabel">Waiting</span>
+      </div>
+
+      <div id="healthPanel">
+        <div class="health-heading">
+          <strong>HEALTH</strong>
+          <span id="healthText">100 / 100%</span>
+        </div>
+        <div class="health-track">
+          <div id="healthFill"></div>
+        </div>
+      </div>
+
+      <div id="helpPanel">
+        <strong>Controls</strong><br />
+        WASD / arrows = move<br />
+        Drag = rotate camera · E = stairs<br />
+        1–4 = equip · Q = ability
+      </div>
+
+      <div id="inventoryPanel">
+        <strong>Equipment — tap/click to equip</strong>
+        <div id="equipmentSlots"></div>
+      </div>
+    </div>
+
+    <div id="mobileControls">
+      <div id="joystickZone" aria-label="Touch here in the lower-left area to move">
+        <div id="movePad"><div id="moveStick"></div></div>
+      </div>
+      <div id="mobileActions">
+        <button id="sprintButton" class="mobileAction" type="button">Sprint</button>
+        <button id="interactButton" class="mobileAction" type="button">Stairs</button>
+        <button id="abilityButton" class="mobileAction primary" type="button">Ability</button>
+        <button id="fullscreenButton" type="button">⛶ Fullscreen</button>
+      </div>
+    </div>
+
+    <div id="joinScreen">
+      <div class="panel">
+        <div class="titleWrap">
+          <div class="titleBadge">ASYLUM</div>
+          <h1>Asylum Break</h1>
+        </div>
+
+        <label>
+          Name
+          <input id="playerName" maxlength="16" value="Player" autocomplete="nickname" />
+        </label>
+
+        <div class="roles" id="roleGrid">
+          <button class="roleButton" data-role="orderly" type="button">
+            <span class="role-card-art"></span>
+            <span class="role-card-label">Orderly</span>
+          </button>
+          <button class="roleButton" data-role="medic" type="button">
+            <span class="role-card-art"></span>
+            <span class="role-card-label">Medic</span>
+          </button>
+          <button class="roleButton" data-role="director" type="button">
+            <span class="role-card-art"></span>
+            <span class="role-card-label">Facility Director</span>
+          </button>
+          <button class="roleButton" data-role="patient" type="button">
+            <span class="role-card-art"></span>
+            <span class="role-card-label">Patient</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="./game.js"></script>
+  </body>
 </html>

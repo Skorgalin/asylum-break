@@ -1,38 +1,441 @@
-* { box-sizing: border-box; }
-html, body { margin: 0; width: 100%; height: 100%; height: 100dvh; overflow: hidden; overscroll-behavior: none; background: #0b1020; color: #edf2ff; font-family: Arial, Helvetica, sans-serif; -webkit-tap-highlight-color: transparent; touch-action: none; user-select: none; -webkit-user-select: none; }
-canvas { display: block; width: 100%; height: 100%; }
-button, input { font: inherit; }
-#hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-#topBar { position: absolute; top: max(12px,env(safe-area-inset-top)); left: max(12px,env(safe-area-inset-left)); display: flex; flex-wrap: wrap; gap: 8px 14px; max-width: calc(100vw - 24px); background: #0f172ad1; border: 1px solid #94a3b877; border-radius: 12px; padding: 10px 14px; backdrop-filter: blur(6px); font-size: 14px; }
-#healthPanel { position: absolute; top: max(70px,calc(env(safe-area-inset-top) + 60px)); left: max(12px,env(safe-area-inset-left)); width: min(260px,48vw); padding: 9px 11px; border: 1px solid #94a3b866; border-radius: 11px; background: #0f172ad9; backdrop-filter: blur(6px); }
-.health-heading { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; font-size: 12px; letter-spacing: .04em; }
-.health-track { height: 12px; overflow: hidden; border-radius: 999px; background: #334155; border: 1px solid #94a3b855; }
-#healthFill { width: 100%; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#22c55e,#86efac); transition: width .18s ease,background .18s ease; }
-#helpPanel, #inventoryPanel { position: absolute; background: #0f172ad9; border: 1px solid #94a3b877; border-radius: 12px; padding: 10px 12px; backdrop-filter: blur(6px); }
-#helpPanel { right: 18px; bottom: 18px; } #inventoryPanel { left: 18px; bottom: 18px; max-width: min(520px,calc(100vw - 36px)); }
-#equipmentSlots { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; pointer-events: auto; }
-.equipment-slot { min-height: 42px; min-width: 76px; padding: 6px 9px; color: #e2e8f0; border: 1px solid #64748b; border-radius: 9px; background: #1e293bcc; cursor: pointer; touch-action: manipulation; font-size: 12px; }
-.equipment-slot .slot-number { color: #93c5fd; font-weight: 800; margin-right: 4px; }
-.equipment-slot.selected { border-color: #38bdf8; background: #075985dd; box-shadow: 0 0 0 2px #38bdf855; }
-#joinScreen { position: fixed; inset: 0; display: grid; place-items: center; padding: 20px; background: #020617d9; z-index: 20; touch-action: auto; }
-.panel { width: min(420px,calc(100vw - 40px)); background: #0f172af7; border: 1px solid #94a3b866; border-radius: 18px; padding: 22px 20px; box-shadow: 0 18px 48px #0006; }
-h1 { margin: 0 0 18px; font-size: clamp(2rem,4vw,2.8rem); text-align: center; }
-label { display: block; margin-bottom: 16px; font-weight: bold; }
-input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #64748b; background: #0f172acc; color: white; margin-top: 8px; touch-action: auto; user-select: text; }
-.roles { display: grid; grid-template-columns: repeat(2,minmax(120px,1fr)); gap: 12px; }
-.roleButton { min-height: 48px; border: 1px solid #64748b; background: linear-gradient(135deg,#6366f177,#38bdf83b); color: white; padding: 12px 10px; border-radius: 12px; cursor: pointer; font-weight: bold; }
-.hidden { display: none !important; }
-#mobileControls { display: none; }
-.touch-device #helpPanel { display: none; }
-.touch-device #mobileControls { display: block; position: fixed; inset: 0; z-index: 12; pointer-events: none; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-/* Invisible touch zone: the joystick is shown and centered exactly where the player first touches in the lower-left half. */
-#joystickZone { position: absolute; left: 0; bottom: 0; width: 55vw; height: 55vh; pointer-events: auto; touch-action: none; }
-#movePad { display: none; position: fixed; width: 136px; height: 136px; margin: 0; border-radius: 50%; border: 2px solid #ffffff99; background: #0f172a88; box-shadow: 0 4px 20px #0005; pointer-events: none; transform: translate(-50%,-50%); }
-#movePad.visible { display: block; }
-#moveStick { position: absolute; left: 50%; top: 50%; width: 44%; height: 44%; border-radius: 50%; transform: translate(-50%,-50%); background: #e2e8f0d4; border: 2px solid white; box-shadow: 0 2px 8px #0006; pointer-events: none; }
-#mobileActions { position: absolute; right: max(16px,env(safe-area-inset-right)); bottom: max(24px,env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(2,minmax(76px,92px)); gap: 10px; pointer-events: auto; }
-.mobileAction, #fullscreenButton { color: white; border: 1px solid #ffffff8c; background: #0f172ad1; border-radius: 16px; font-weight: 700; box-shadow: 0 4px 14px #0005; touch-action: manipulation; }
-.mobileAction { min-height: 54px; padding: 8px; } .mobileAction.primary { background: #4f46e5e8; } .mobileAction.active { background: #16a34ae8; }
-#fullscreenButton { position: absolute; top: max(12px,env(safe-area-inset-top)); right: max(12px,env(safe-area-inset-right)); min-height: 42px; padding: 8px 12px; pointer-events: auto; }
-@media (max-width:600px) { #topBar { font-size: 12px; gap: 5px 10px; padding: 8px 10px; max-width: calc(100vw - 24px); } #healthPanel { top: 62px; width: 190px; } #inventoryPanel { top: 122px; bottom: auto; left: max(12px,env(safe-area-inset-left)); max-width: calc(100vw - 24px); padding: 7px 9px; font-size: 12px; } .equipment-slot { min-height: 38px; min-width: 68px; } #movePad { width: 120px; height: 120px; } }
-@media (orientation:landscape) and (max-height:500px) { #healthPanel { top: 60px; width: 180px; } #inventoryPanel { top: auto; bottom: 10px; } #mobileActions { grid-template-columns: repeat(3,82px); bottom: max(10px,env(safe-area-inset-bottom)); } .mobileAction { min-height: 46px; } }
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-1: #060d18;
+  --panel: rgba(10, 18, 30, 0.8);
+  --panel-2: rgba(15, 23, 42, 0.88);
+  --line: rgba(148, 163, 184, 0.38);
+  --line-strong: rgba(96, 165, 250, 0.8);
+  --text: #edf3ff;
+  --muted: #dbeafe;
+  --primary: #60a5fa;
+  --primary-2: #22d3ee;
+  --gold: #fbbf24;
+  --green: #34d399;
+  --red: #f87171;
+  --purple: #a78bfa;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--bg-1);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  position: relative;
+  background:
+    radial-gradient(circle at top, rgba(59, 130, 246, 0.18), transparent 30%),
+    linear-gradient(180deg, #081420 0%, #0b1020 100%);
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+#topBar {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  max-width: calc(100vw - 24px);
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 12px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.28);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+#healthPanel {
+  position: absolute;
+  top: max(70px, calc(env(safe-area-inset-top) + 60px));
+  left: max(12px, env(safe-area-inset-left));
+  width: min(260px, 48vw);
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.26);
+}
+
+.health-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+.health-track {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(51, 65, 85, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.38);
+}
+
+#healthFill {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22c55e, #86efac);
+  transition: width 0.18s ease, background 0.18s ease;
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.7);
+}
+
+#helpPanel,
+#inventoryPanel {
+  position: absolute;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.24);
+}
+
+#helpPanel {
+  right: 18px;
+  bottom: 18px;
+}
+
+#inventoryPanel {
+  left: 18px;
+  bottom: 18px;
+  max-width: min(540px, calc(100vw - 36px));
+}
+
+#equipmentSlots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+  pointer-events: auto;
+}
+
+.equipment-slot {
+  min-height: 42px;
+  min-width: 80px;
+  padding: 7px 10px;
+  color: #e2e8f0;
+  border: 1px solid #64748b;
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.8);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.equipment-slot:hover,
+.equipment-slot:focus-visible {
+  transform: translateY(-1px);
+}
+
+.equipment-slot.selected {
+  border-color: rgba(96, 165, 250, 0.9);
+  background: rgba(8, 47, 73, 0.82);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.48);
+}
+
+#joinScreen {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(2, 6, 23, 0.72);
+  z-index: 20;
+  touch-action: auto;
+  backdrop-filter: blur(6px);
+}
+
+.panel {
+  width: min(520px, calc(100vw - 40px));
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(10, 18, 30, 0.96));
+  border: 1px solid rgba(148, 163, 184, 0.46);
+  border-radius: 22px;
+  padding: 22px 20px 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.52);
+}
+
+.titleWrap {
+  display: grid;
+  justify-items: center;
+  margin-bottom: 16px;
+}
+
+.titleBadge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(34, 211, 238, 0.14));
+  border: 1px solid rgba(96, 165, 250, 0.5);
+  color: #dbeafe;
+  letter-spacing: 0.22em;
+  font-size: 11px;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 2.9rem);
+  text-align: center;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: 0 0 18px rgba(96, 165, 250, 0.5);
+}
+
+label {
+  display: block;
+  margin-bottom: 16px;
+  font-weight: 700;
+}
+
+input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(100, 116, 139, 0.7);
+  background: rgba(15, 23, 42, 0.7);
+  color: white;
+  margin-top: 8px;
+  touch-action: auto;
+  user-select: text;
+}
+
+.roles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.roleButton {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  min-height: 210px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(17, 24, 39, 0.78));
+  color: white;
+  padding: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.roleButton:hover,
+.roleButton:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: 0 16px 36px rgba(96, 165, 250, 0.18);
+}
+
+.roleButton.selected {
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.35), 0 18px 32px rgba(96, 165, 250, 0.2);
+}
+
+.role-card-art {
+  display: block;
+  height: 180px;
+  border-radius: 12px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.18);
+}
+
+.role-card-label {
+  display: block;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-align: center;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.hidden {
+  display: none !important;
+}
+
+#mobileControls {
+  display: none;
+}
+
+.touch-device #helpPanel {
+  display: none;
+}
+
+.touch-device #mobileControls {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+#joystickZone {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 55vw;
+  height: 55vh;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+#movePad {
+  display: none;
+  position: fixed;
+  width: 136px;
+  height: 136px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.66);
+  background: rgba(15, 23, 42, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+
+#movePad.visible {
+  display: block;
+}
+
+#moveStick {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44%;
+  height: 44%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(226, 232, 240, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.24);
+}
+
+#mobileActions {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: repeat(2, minmax(76px, 92px));
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.mobileAction,
+#fullscreenButton {
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: 16px;
+  font-weight: 700;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  touch-action: manipulation;
+}
+
+.mobileAction {
+  min-height: 54px;
+  padding: 8px;
+}
+
+.mobileAction.primary {
+  background: rgba(79, 70, 229, 0.82);
+}
+
+.mobileAction.active {
+  background: rgba(22, 163, 74, 0.82);
+}
+
+#fullscreenButton {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  min-height: 42px;
+  padding: 8px 12px;
+  pointer-events: auto;
+}
+
+@media (max-width: 600px) {
+  #topBar {
+    font-size: 12px;
+    gap: 5px 10px;
+    padding: 8px 10px;
+    max-width: calc(100vw - 24px);
+  }
+
+  #healthPanel {
+    top: 62px;
+    width: 190px;
+  }
+
+  #inventoryPanel {
+    top: 122px;
+    bottom: auto;
+    left: 12px;
+    right: 12px;
+    max-width: none;
+  }
+
+  .roleButton {
+    min-height: 180px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  #healthPanel {
+    top: 60px;
+    width: 180px;
+  }
+
+  #inventoryPanel {
+    top: auto;
+    bottom: 10px;
+  }
+
+  #mobileActions {
+    grid-template-columns: repeat(3, 82px);
+  }
+}
