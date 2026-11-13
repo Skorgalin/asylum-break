@@ -5,65 +5,67 @@ const isTouchDevice = matchMedia('(pointer: coarse)').matches || navigator.maxTo
 if (isTouchDevice) document.documentElement.classList.add('touch-device');
 
 const roleInfo = {
-  patient: { color: '#ef4444', ability: 'Glass Shard', inventory: ['glassShard'] },
-  medic: { color: '#34d399', ability: 'Medic Heal', inventory: ['smallMedKit', 'mediumMedKit'] },
-  orderly: { color: '#fbbf24', ability: 'Arrest Cuffs', inventory: ['riotShield', 'taser', 'stunBaton', 'arrestCuffs'] },
-  director: { color: '#a78bfa', ability: 'Director Tablet', inventory: ['tablet', 'stunBaton'] }
+  patient: { color: '#ef4444', inventory: ['glassShard'] },
+  medic: { color: '#34d399', inventory: ['smallMedKit', 'mediumMedKit'] },
+  orderly: { color: '#fbbf24', inventory: ['riotShield', 'taser', 'stunBaton', 'arrestCuffs'] },
+  director: { color: '#a78bfa', inventory: ['tablet', 'stunBaton'] }
 };
+// Floor indexes: Ground=0, U1=1, U2=2, U3=3.
 const roleSpawns = {
-  patient: { x: -10, z: -12, floor: 3 },
-  medic: { x: 10, z: 12, floor: 2 },
-  orderly: { x: -14, z: 12, floor: 2 },
-  director: { x: 12, z: -14, floor: 1 }
+  patient: { x: -18, z: 7, floor: 3 },
+  medic: { x: -25, z: -5, floor: 2 },
+  orderly: { x: 25, z: -5, floor: 2 },
+  director: { x: 23, z: 8, floor: 1 }
 };
 const floorNames = { 0: 'Ground', 1: 'U1', 2: 'U2', 3: 'U3' };
-const floorData = [
-  { level: 0, y: 0, color: 0x7dd3fc, name: 'GROUND FLOOR' },
-  { level: 1, y: 8, color: 0x4ade80, name: 'U1 · DIRECTOR / LABS' },
-  { level: 2, y: 16, color: 0xfbbf24, name: 'U2 · MEDICAL / GUARD' },
-  { level: 3, y: 24, color: 0xf87171, name: 'U3 · PATIENT AREA' }
+const floors = [
+  { level: 0, y: 0, name: 'GROUND FLOOR · EXIT', accent: '#38bdf8' },
+  { level: 1, y: 8, name: 'U1 · DIRECTOR OFFICE / LABS', accent: '#a78bfa' },
+  { level: 2, y: 16, name: 'U2 · MEDICAL BAY / GUARD ZONE', accent: '#34d399' },
+  { level: 3, y: 24, name: 'U3 · PATIENT AREA / CAFETERIA', accent: '#fb7185' }
 ];
+const FLOOR_W = 88;
+const FLOOR_D = 60;
+const HALF_W = FLOOR_W / 2;
+const HALF_D = FLOOR_D / 2;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0b1020);
-scene.fog = new THREE.Fog(0x0b1020, 60, 115);
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+scene.background = new THREE.Color(0x101827);
+scene.fog = new THREE.Fog(0x101827, 85, 180);
+const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 250);
 const renderer = new THREE.WebGLRenderer({ antialias: !isTouchDevice, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isTouchDevice ? 1.5 : 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, isTouchDevice ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xdbeafe, 0x293449, 2.0));
-const dirLight = new THREE.DirectionalLight(0xfff1d6, 2.2);
-dirLight.position.set(-12, 45, 18);
-scene.add(dirLight);
+scene.add(new THREE.HemisphereLight(0xe4f0ff, 0x45505d, 1.75));
+const sun = new THREE.DirectionalLight(0xfff1d8, 2.3);
+sun.position.set(-25, 55, 20);
+sun.castShadow = true;
+sun.shadow.mapSize.set(isTouchDevice ? 1024 : 2048, isTouchDevice ? 1024 : 2048);
+sun.shadow.camera.left = -65; sun.shadow.camera.right = 65;
+sun.shadow.camera.top = 65; sun.shadow.camera.bottom = -65;
+sun.shadow.bias = -0.00025;
+scene.add(sun);
 
-const localPlayer = { id: null, name: 'Player', role: null, x: 0, y: 0, z: 0, floor: 0, color: '#ffffff', inventory: [], health: 100, stunned: false, mesh: null };
+const localPlayer = { id: null, name: 'Player', role: null, x: 0, y: 0, z: 0, floor: 0, color: '#fff', inventory: [], health: 100, stunned: false, mesh: null };
 const remotePlayers = new Map();
-const worldPlayers = new Map();
+const playerMeshes = new Map();
+const floorGroups = new Map();
+const floorWalls = new Map();
 const keys = {};
 const touchInput = { x: 0, z: 0, sprint: false };
 let lastNetworkUpdate = 0;
-let previousFrame = performance.now();
+let lastFrame = performance.now();
 let cameraYaw = 0;
-let cameraPitch = 0.28;
+let cameraPitch = 0.38;
 let cameraDistance = 13;
 let draggingCamera = false;
 let previousPointer = null;
-const wallMeshes = [];
-const wallRaycaster = new THREE.Raycaster();
-const doorDefs = [
-  { id: 'door1', x: 0, z: 4, floor: 1, locked: true, type: 'keycard' },
-  { id: 'door2', x: 6, z: -4, floor: 2, locked: true, type: 'director' },
-  { id: 'door3', x: -10, z: 0, floor: 0, locked: false, type: 'normal' },
-  { id: 'door4', x: 8, z: 9, floor: 3, locked: true, type: 'keycard' }
-];
-const stairs = [
-  { id: 'stair1', x: -18, z: -4, floor: 3, targetFloor: 2 },
-  { id: 'stair2', x: 18, z: -4, floor: 2, targetFloor: 1 },
-  { id: 'stair3', x: 18, z: 10, floor: 1, targetFloor: 0 },
-  { id: 'stair4', x: -18, z: 4, floor: 0, targetFloor: 1 }
-];
+const raycaster = new THREE.Raycaster();
+
 const ui = {
   roleLabel: document.getElementById('roleLabel'), floorLabel: document.getElementById('floorLabel'),
   statusLabel: document.getElementById('statusLabel'), joinScreen: document.getElementById('joinScreen'),
@@ -72,350 +74,391 @@ const ui = {
   fullscreenButton: document.getElementById('fullscreenButton')
 };
 
-function makeCanvasTexture(draw, repeatX = 1, repeatY = 1) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
-  const context = canvas.getContext('2d');
-  draw(context, canvas.width, canvas.height);
+function canvasTexture(draw, repeatX = 1, repeatY = 1) {
+  const canvas = document.createElement('canvas'); canvas.width = canvas.height = 512;
+  const ctx = canvas.getContext('2d'); draw(ctx, 512, 512);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(repeatX, repeatY);
-  texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 4);
+  texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
   return texture;
 }
-const floorTexture = makeCanvasTexture((ctx, w, h) => {
-  ctx.fillStyle = '#cbd5e1'; ctx.fillRect(0, 0, w, h);
-  for (let y = 0; y < h; y += 32) {
-    for (let x = 0; x < w; x += 32) {
-      ctx.fillStyle = ((x / 32 + y / 32) % 2) ? '#b7c3d0' : '#d7dee7';
-      ctx.fillRect(x + 1, y + 1, 30, 30);
-      ctx.strokeStyle = 'rgba(51,65,85,.18)'; ctx.strokeRect(x + 1, y + 1, 30, 30);
-    }
+const tileTexture = canvasTexture((ctx, size) => {
+  ctx.fillStyle = '#cbd5df'; ctx.fillRect(0, 0, size, size);
+  const tile = 64;
+  for (let y = 0; y < size; y += tile) for (let x = 0; x < size; x += tile) {
+    const shade = 187 + Math.floor(Math.random() * 20);
+    ctx.fillStyle = `rgb(${shade},${shade + 5},${shade + 9})`;
+    ctx.fillRect(x + 2, y + 2, tile - 4, tile - 4);
+    ctx.strokeStyle = 'rgba(55,65,81,.25)'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, tile - 2, tile - 2);
+    ctx.fillStyle = 'rgba(255,255,255,.17)'; ctx.fillRect(x + 4, y + 4, tile - 8, 3);
   }
-  ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.fillRect(0, 0, w, 5);
-}, 10, 8);
-const wallTexture = makeCanvasTexture((ctx, w, h) => {
-  const gradient = ctx.createLinearGradient(0, 0, w, h);
-  gradient.addColorStop(0, '#e2e8f0'); gradient.addColorStop(1, '#aebdca');
-  ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h);
-  for (let y = 0; y < h; y += 64) {
-    ctx.fillStyle = 'rgba(71,85,105,.12)'; ctx.fillRect(0, y, w, 3);
-    for (let x = 12; x < w; x += 64) {
-      ctx.fillStyle = 'rgba(255,255,255,.17)'; ctx.fillRect(x, y + 8, 3, 42);
-    }
+  for (let i = 0; i < 1800; i++) {
+    ctx.fillStyle = `rgba(51,65,85,${Math.random() * 0.08})`;
+    ctx.fillRect(Math.random() * size, Math.random() * size, 1 + Math.random() * 3, 1 + Math.random() * 3);
   }
-}, 3, 1);
-const floorMaterial = new THREE.MeshStandardMaterial({ map: floorTexture, color: 0xffffff, roughness: 0.86 });
-const wallMaterial = new THREE.MeshStandardMaterial({ map: wallTexture, color: 0xffffff, roughness: 0.92 });
+}, 9, 7);
+const plasterTexture = canvasTexture((ctx, size) => {
+  const g = ctx.createLinearGradient(0, 0, size, size); g.addColorStop(0, '#e8e5dc'); g.addColorStop(1, '#b7c1c8');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 3200; i++) {
+    const a = Math.random() * 0.09; ctx.fillStyle = `rgba(51,65,85,${a})`;
+    ctx.fillRect(Math.random() * size, Math.random() * size, 2 + Math.random() * 8, 1 + Math.random() * 3);
+  }
+  for (let y = 0; y < size; y += 128) { ctx.fillStyle = 'rgba(71,85,105,.18)'; ctx.fillRect(0, y, size, 3); }
+}, 2, 1);
+const ceilingTexture = canvasTexture((ctx, size) => {
+  ctx.fillStyle = '#d7dce0'; ctx.fillRect(0, 0, size, size);
+  for (let y = 0; y < size; y += 128) for (let x = 0; x < size; x += 128) {
+    ctx.fillStyle = '#e8ecef'; ctx.fillRect(x + 3, y + 3, 122, 122);
+    ctx.strokeStyle = '#aeb8c2'; ctx.lineWidth = 3; ctx.strokeRect(x + 1, y + 1, 126, 126);
+  }
+}, 6, 4);
+const tileMat = new THREE.MeshStandardMaterial({ map: tileTexture, roughness: 0.82 });
+const wallMat = new THREE.MeshStandardMaterial({ map: plasterTexture, roughness: 0.9 });
+const ceilingMat = new THREE.MeshStandardMaterial({ map: ceilingTexture, roughness: 0.9, side: THREE.DoubleSide });
 
-function addWall(x, y, z, width, height, depth, material = wallMaterial) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
-  mesh.position.set(x, y, z);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  scene.add(mesh);
-  wallMeshes.push(mesh);
-  return mesh;
+function addMesh(group, mesh, shadows = true) {
+  if (shadows) { mesh.castShadow = true; mesh.receiveShadow = true; }
+  group.add(mesh); return mesh;
 }
-function buildFloor(level) {
-  const data = floorData.find((floor) => floor.level === level);
-  const plane = new THREE.Mesh(new THREE.BoxGeometry(46, 0.5, 34), floorMaterial);
-  plane.position.set(0, data.y, 0);
-  plane.receiveShadow = true;
-  scene.add(plane);
-  const edge = new THREE.Mesh(new THREE.BoxGeometry(46.4, 0.35, 34.4), new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 }));
-  edge.position.set(0, data.y - 0.38, 0);
-  scene.add(edge);
-  // Each floor has its own perimeter walls. Camera collision uses these walls too.
-  const wallY = data.y + 2.25;
-  addWall(0, wallY, -17, 42, 4.5, 0.8);
-  addWall(0, wallY, 17, 42, 4.5, 0.8);
-  addWall(-21, wallY, 0, 0.8, 4.5, 32.8);
-  addWall(21, wallY, 0, 0.8, 4.5, 32.8);
-  // Interior partitions add visible room structure without closing the central corridors.
-  addWall(-5, wallY, -7, 0.45, 4.5, 8.5);
-  addWall(8, wallY, 6, 0.45, 4.5, 9);
-  addWall(0, wallY, -3, 10, 4.5, 0.45);
-  // A floor stripe gives each level a distinct visual identity.
-  const accent = new THREE.Mesh(new THREE.BoxGeometry(40, 0.035, 0.18), new THREE.MeshStandardMaterial({ color: data.color, emissive: data.color, emissiveIntensity: 0.12, roughness: 0.55 }));
-  accent.position.set(0, data.y + 0.28, 12.5);
-  scene.add(accent);
-  const sign = makeFloorSign(data.name, data.color);
-  sign.position.set(-15, data.y + 3.4, -15.8);
-  scene.add(sign);
+function box(group, x, y, z, w, h, d, material, shadows = true) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+  mesh.position.set(x, y, z); return addMesh(group, mesh, shadows);
 }
-function makeFloorSign(text, color) {
-  const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 128;
+function makeSign(text, accent) {
+  const canvas = document.createElement('canvas'); canvas.width = 768; canvas.height = 160;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, 512, 128);
-  ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`; ctx.fillRect(0, 0, 14, 128);
-  ctx.font = 'bold 30px Arial'; ctx.fillStyle = '#f8fafc'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, 266, 66);
-  const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(9, 2.25), new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide }));
-  return sign;
+  ctx.fillStyle = '#111c2c'; ctx.fillRect(0, 0, 768, 160);
+  ctx.fillStyle = accent; ctx.fillRect(0, 0, 18, 160);
+  ctx.font = 'bold 36px Arial'; ctx.fillStyle = '#f8fafc'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, 400, 82);
+  const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.Mesh(new THREE.PlaneGeometry(12, 2.5), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
 }
-function buildDoors() {
-  doorDefs.forEach((door) => {
-    const color = door.type === 'director' ? '#a78bfa' : door.type === 'keycard' ? '#fbbf24' : '#94a3b8';
-    const material = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.45 });
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.6, 0.6), material);
-    mesh.position.set(door.x, floorData[door.floor].y + 2, door.z);
-    mesh.userData = { ...door };
-    mesh.castShadow = true;
-    scene.add(mesh);
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.55, 0.12), new THREE.MeshStandardMaterial({ color: door.type === 'director' ? 0x8b5cf6 : 0x38bdf8, emissive: door.type === 'director' ? 0x4c1d95 : 0x075985, emissiveIntensity: 0.6 }));
-    panel.position.set(door.x + 1.3, floorData[door.floor].y + 2.3, door.z);
-    scene.add(panel);
-  });
+function createFloor(level) {
+  const data = floors[level];
+  const group = new THREE.Group(); group.name = `floor-${level}`; floorGroups.set(level, group); scene.add(group);
+  floorWalls.set(level, []);
+  const baseY = data.y;
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(FLOOR_W, 0.6, FLOOR_D), tileMat);
+  floor.position.set(0, baseY, 0); addMesh(group, floor);
+  // Opaque ceiling slab hides the level above; only the active story is rendered to prevent looking through floors.
+  const ceiling = new THREE.Mesh(new THREE.BoxGeometry(FLOOR_W, 0.45, FLOOR_D), ceilingMat);
+  ceiling.position.set(0, baseY + 6.4, 0); addMesh(group, ceiling, false);
+  const wallY = baseY + 3.05;
+  const wall = (x, z, w, d, h = 6.1) => {
+    const mesh = box(group, x, baseY + h / 2, z, w, h, d, wallMat);
+    floorWalls.get(level).push(mesh);
+    return mesh;
+  };
+  // Perimeter walls are deliberately solid and tall enough to keep the camera inside.
+  wall(0, -HALF_D, FLOOR_W, 0.75); wall(0, HALF_D, FLOOR_W, 0.75);
+  wall(-HALF_W, 0, 0.75, FLOOR_D); wall(HALF_W, 0, 0.75, FLOOR_D);
+  const accent = new THREE.MeshStandardMaterial({ color: data.accent, roughness: 0.55, metalness: 0.12 });
+  // Colored lower wall trims and ceiling lights improve readability across floors.
+  for (const z of [-HALF_D + 1, HALF_D - 1]) box(group, 0, baseY + 0.38, z, FLOOR_W - 2, 0.22, 0.12, accent, false);
+  for (const x of [-HALF_W + 1, HALF_W - 1]) box(group, x, baseY + 0.38, 0, 0.12, 0.22, FLOOR_D - 2, accent, false);
+  for (const [lx, lz] of [[-25,-18],[-5,-18],[15,-18],[33,-18],[-25,12],[-5,12],[15,12],[33,12]]) {
+    const light = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.12, 1.1), new THREE.MeshStandardMaterial({ color: 0xfff7da, emissive: 0xffe6a3, emissiveIntensity: 1.1 }));
+    light.position.set(lx, baseY + 6.05, lz); addMesh(group, light, false);
+  }
+  const sign = makeSign(data.name, data.accent); sign.position.set(0, baseY + 4.9, -HALF_D + 0.55); group.add(sign);
+
+  // Two stairwells at the ends of the building connect every adjacent story.
+  addStairwell(group, level, -36, 0, data.y);
+  addStairwell(group, level, 36, 0, data.y);
+  addRoomFurniture(group, level, data.y);
 }
-function buildStairs() {
-  stairs.forEach((stair) => {
-    const y = floorData[stair.floor].y + 0.8;
-    for (let step = 0; step < 5; step++) {
-      const tread = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.22, 0.58), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.72 }));
-      tread.position.set(stair.x, y + step * 0.28, stair.z + (step - 2) * 0.52);
-      tread.castShadow = true; scene.add(tread);
+function addStairwell(group, level, x, z, y) {
+  const platformMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.75 });
+  const markerMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x075985, emissiveIntensity: 0.55, transparent: true, opacity: 0.82 });
+  // A prominent landing marks the matching stairwell on every story; E changes to the adjacent floor.
+  box(group, x, y + 0.38, z, 7.2, 0.12, 7.2, markerMat, false);
+  for (let i = 0; i < 7; i++) {
+    const step = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.28, 0.72), platformMat);
+    step.position.set(x, y + 0.62 + i * 0.23, z - 2.2 + i * 0.6); addMesh(group, step);
+  }
+  const label = makeSign(level < 3 ? `STAIRS UP · ${floorNames[level + 1]}` : 'STAIRS DOWN · U2', '#38bdf8');
+  label.scale.set(0.42, 0.42, 1); label.position.set(x, y + 3.3, z - 3.3); group.add(label);
+}
+function addPartition(group, y, x, z, width, depth, gap = 0) {
+  const h = 5.3;
+  if (!gap) { box(group, x, y + h / 2, z, width, h, depth, wallMat); return; }
+  // Leave a walk-through opening while keeping a short wall segment on both sides.
+  if (width > depth) {
+    const segment = (width - gap) / 2;
+    box(group, x - gap / 2 - segment / 2, y + h / 2, z, segment, h, depth, wallMat);
+    box(group, x + gap / 2 + segment / 2, y + h / 2, z, segment, h, depth, wallMat);
+  } else {
+    const segment = (depth - gap) / 2;
+    box(group, x, y + h / 2, z - gap / 2 - segment / 2, width, h, segment, wallMat);
+    box(group, x, y + h / 2, z + gap / 2 + segment / 2, width, h, segment, wallMat);
+  }
+}
+function addRoomFurniture(group, level, y) {
+  const accent = floors[level].accent;
+  const accentMat = new THREE.MeshStandardMaterial({ color: accent, roughness: 0.7 });
+  const wood = new THREE.MeshStandardMaterial({ color: 0x806248, roughness: 0.8 });
+  const metal = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.56, metalness: 0.35 });
+  const mattress = new THREE.MeshStandardMaterial({ color: level === 3 ? 0x8da1b3 : 0x94a3b8, roughness: 0.92 });
+  if (level === 3) {
+    // One large, connected patient common area and cafeteria, with sleeping rooms grouped along the north side.
+    addPartition(group, y, 0, -19, 51, 0.55, 5);
+    for (const x of [-34, -22, -10, 2, 14]) {
+      box(group, x, y + 1.05, -25, 5.8, 0.35, 2.6, wood);
+      box(group, x, y + 0.78, -25, 5.3, 0.3, 2.2, mattress);
+      box(group, x, y + 1.6, -26.6, 5.8, 1.2, 0.25, accentMat);
     }
-    const marker = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.08, 3.5), new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0369a1, emissiveIntensity: 0.35, transparent: true, opacity: 0.75 }));
-    marker.position.set(stair.x, floorData[stair.floor].y + 0.38, stair.z);
-    marker.userData = { ...stair, type: 'stairs' };
-    scene.add(marker);
-  });
+    // Dining hall: long shared tables and benches; it remains open to the patient lounge.
+    for (const x of [-22, -8, 6, 20]) {
+      box(group, x, y + 1.05, 2, 8.5, 0.28, 2.8, wood);
+      box(group, x, y + 0.62, 2, 8.9, 0.22, 0.65, metal);
+      box(group, x, y + 0.62, 4.1, 8.9, 0.22, 0.65, metal);
+      for (const dx of [-3.6, 3.6]) box(group, x + dx, y + 0.62, -0.3, 0.26, 0.9, 0.26, metal);
+    }
+    // Serving counter and kitchen pass-through at the east end.
+    box(group, 34, y + 1.1, 4, 1.4, 1.8, 15, metal);
+    box(group, 33.15, y + 2.05, 4, 0.16, 0.12, 13, accentMat, false);
+    for (const x of [-32, -20, -8, 4]) box(group, x, y + 0.55, 12, 6, 0.18, 1, accentMat, false);
+    const sign = makeSign('CAFETERIA · PATIENT COMMON AREA', '#fb7185'); sign.scale.set(0.6, 0.6, 1); sign.position.set(23, y + 3.6, 15); group.add(sign);
+  } else if (level === 2) {
+    // Medical bay to the west; orderly/guard zone to the east; central corridor connects them.
+    addPartition(group, y, -20, -3, 0.55, 34, 5);
+    addPartition(group, y, 20, -3, 0.55, 34, 5);
+    addPartition(group, y, -8, -20, 23, 0.55, 4);
+    addPartition(group, y, 8, -20, 23, 0.55, 4);
+    for (const x of [-31, -21, -11]) {
+      box(group, x, y + 0.58, -7, 5.4, 0.18, 2.2, metal);
+      box(group, x, y + 0.9, -7, 4.6, 0.38, 1.7, mattress);
+      box(group, x, y + 1.5, -8.7, 4.8, 1.2, 0.18, accentMat);
+    }
+    for (const x of [25, 34]) {
+      box(group, x, y + 1.1, -6, 4.5, 2.1, 3.2, metal);
+      box(group, x, y + 2.2, -6, 4.8, 0.18, 3.5, accentMat, false);
+    }
+    const sign = makeSign('MEDICAL BAY  ←     →  ORDERLY / GUARD ZONE', '#34d399'); sign.scale.set(0.58,0.58,1); sign.position.set(0, y + 3.7, -13); group.add(sign);
+  } else if (level === 1) {
+    addPartition(group, y, 0, -10, 0.55, 35, 5);
+    addPartition(group, y, -23, -10, 0.55, 35, 4);
+    addPartition(group, y, 23, -10, 0.55, 35, 4);
+    for (const x of [-34, -27, -19]) {
+      box(group, x, y + 1.1, -19, 4.2, 2.1, 2.6, metal);
+      box(group, x, y + 2.2, -19, 4.4, 0.18, 2.8, accentMat, false);
+      box(group, x, y + 0.55, -12, 2.4, 0.18, 1.4, wood);
+    }
+    box(group, 32, y + 0.7, -17, 8, 1.2, 2.4, wood);
+    box(group, 32, y + 1.35, -17, 8.3, 0.14, 2.6, accentMat, false);
+    for (const z of [-4, 4, 12]) box(group, 31, y + 0.85, z, 5, 1.7, 3.2, metal);
+    const sign = makeSign('FACILITY DIRECTOR · LABORATORIES', '#a78bfa'); sign.scale.set(0.58,0.58,1); sign.position.set(0, y + 3.7, -2); group.add(sign);
+  } else {
+    // Large reception / waiting area with a clear route to the main exit.
+    addPartition(group, y, 0, -18, 48, 0.55, 8);
+    box(group, 0, y + 1.1, 22, 18, 2.1, 2.5, wood);
+    box(group, 0, y + 2.2, 22, 18.2, 0.18, 2.7, accentMat, false);
+    for (const x of [-31, -21, 21, 31]) {
+      box(group, x, y + 0.7, 4, 5.5, 0.25, 2, metal);
+      box(group, x, y + 1.5, 4, 5.5, 1.2, 0.18, accentMat);
+    }
+    const sign = makeSign('MAIN EXIT · RECEPTION', '#38bdf8'); sign.scale.set(0.55,0.55,1); sign.position.set(0, y + 3.8, 27); group.add(sign);
+  }
 }
-function buildExit() {
-  const frameMaterial = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.55, roughness: 0.38 });
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(5, 4.5, 0.8), frameMaterial);
-  frame.position.set(0, 2.25, 16.5); frame.castShadow = true; scene.add(frame);
-  const panel = new THREE.Mesh(new THREE.BoxGeometry(3.6, 3.4, 0.25), new THREE.MeshStandardMaterial({ color: 0x22c55e, emissive: 0x14532d, emissiveIntensity: 0.5, metalness: 0.3 }));
-  panel.position.set(0, 2, 16); scene.add(panel);
-  const label = makeFloorSign('EXIT', 0x22c55e);
-  label.scale.set(0.45, 0.45, 1); label.position.set(0, 4.8, 15.9); scene.add(label);
+function buildWorld() {
+  floors.forEach((f) => createFloor(f.level));
+  setActiveFloor(localPlayer.floor);
 }
-function setupWorld() {
-  floorData.forEach((floor) => buildFloor(floor.level));
-  buildDoors(); buildStairs(); buildExit();
+function setActiveFloor(level) {
+  for (const [floor, group] of floorGroups) group.visible = floor === level;
+  for (const [id, mesh] of playerMeshes) {
+    const state = id === socket.id ? localPlayer : remotePlayers.get(id);
+    if (state) mesh.visible = state.floor === level;
+  }
 }
 
-// A simple blocky, toy-like avatar inspired by classic Roblox proportions.
-function createPlayerMesh(player, isLocal = false) {
+function createPlayerMesh(player) {
   const group = new THREE.Group();
-  const roleColor = new THREE.Color(player.color || roleInfo[player.role]?.color || '#ffffff');
-  const shirtMat = new THREE.MeshStandardMaterial({ color: roleColor, roughness: 0.72 });
-  const pantsMat = new THREE.MeshStandardMaterial({ color: player.role === 'patient' ? 0x334155 : 0x1e293b, roughness: 0.82 });
-  const skinMat = new THREE.MeshStandardMaterial({ color: 0xf1c7a5, roughness: 0.88 });
-  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 });
-  const part = (w, h, d, material, x, y, z, parent = group) => {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
-    mesh.position.set(x, y, z); mesh.castShadow = true; mesh.receiveShadow = true; parent.add(mesh); return mesh;
-  };
-  // Feet/legs, torso, arms, square head, and tiny eyes make a recognizable humanoid silhouette.
-  part(0.48, 0.9, 0.5, pantsMat, -0.27, 0.48, 0);
-  part(0.48, 0.9, 0.5, pantsMat, 0.27, 0.48, 0);
-  part(0.5, 0.16, 0.58, shoeMat, -0.27, 0.08, -0.04);
-  part(0.5, 0.16, 0.58, shoeMat, 0.27, 0.08, -0.04);
-  part(1.05, 0.95, 0.58, shirtMat, 0, 1.45, 0);
-  part(0.32, 0.9, 0.38, shirtMat, -0.73, 1.48, 0);
-  part(0.32, 0.9, 0.38, shirtMat, 0.73, 1.48, 0);
-  part(0.62, 0.62, 0.62, skinMat, 0, 2.3, 0);
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111827 });
-  part(0.075, 0.09, 0.025, eyeMat, -0.14, 2.34, -0.32);
-  part(0.075, 0.09, 0.025, eyeMat, 0.14, 2.34, -0.32);
-  const mouth = part(0.14, 0.035, 0.025, eyeMat, 0, 2.15, -0.325);
-  // Small shoulder badge makes team colors readable from a distance.
-  part(0.22, 0.22, 0.08, new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.6 }), -0.3, 1.72, -0.34);
-  group.position.set(player.x, floorData[player.floor]?.y || 0, player.z);
+  const shirt = new THREE.MeshStandardMaterial({ color: player.color || roleInfo[player.role]?.color || '#ffffff', roughness: 0.76 });
+  const pants = new THREE.MeshStandardMaterial({ color: player.role === 'patient' ? 0x3f5065 : 0x202c3c, roughness: 0.86 });
+  const skin = new THREE.MeshStandardMaterial({ color: 0xe9bd9a, roughness: 0.9 });
+  const shoes = new THREE.MeshStandardMaterial({ color: 0x17202b, roughness: 0.9 });
+  const addPart = (w,h,d,x,y,z,mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat); m.position.set(x,y,z); m.castShadow = true; m.receiveShadow = true; group.add(m); return m; };
+  addPart(0.47, 0.82, 0.48, -0.25, 0.49, 0, pants);
+  addPart(0.47, 0.82, 0.48, 0.25, 0.49, 0, pants);
+  addPart(0.5, 0.16, 0.58, -0.25, 0.08, -0.04, shoes);
+  addPart(0.5, 0.16, 0.58, 0.25, 0.08, -0.04, shoes);
+  addPart(0.98, 0.88, 0.55, 0, 1.38, 0, shirt);
+  addPart(0.3, 0.84, 0.35, -0.66, 1.4, 0, shirt);
+  addPart(0.3, 0.84, 0.35, 0.66, 1.4, 0, shirt);
+  addPart(0.62, 0.62, 0.62, 0, 2.18, 0, skin);
+  const face = new THREE.MeshBasicMaterial({ color: 0x17202b });
+  addPart(0.07, 0.09, 0.03, -0.14, 2.22, -0.32, face);
+  addPart(0.07, 0.09, 0.03, 0.14, 2.22, -0.32, face);
+  addPart(0.14, 0.035, 0.03, 0, 2.04, -0.32, face);
+  addPart(0.2, 0.2, 0.08, -0.27, 1.62, -0.31, new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
+  group.position.set(player.x, floors[player.floor]?.y || 0, player.z);
   group.userData.playerId = player.id;
-  group.userData.isLocal = isLocal;
-  group.userData.roleColor = roleColor;
+  group.userData.role = player.role;
   return group;
 }
-function addRemotePlayer(player) {
-  let mesh = worldPlayers.get(player.id);
-  if (mesh && mesh.userData.role !== player.role) {
-    scene.remove(mesh); worldPlayers.delete(player.id); mesh = null;
-  }
-  if (!mesh) {
-    mesh = createPlayerMesh(player);
-    mesh.userData.role = player.role;
-    worldPlayers.set(player.id, mesh); scene.add(mesh);
-  }
-  return mesh;
+function addPlayer(player, local = false) {
+  const old = playerMeshes.get(player.id);
+  if (old) { scene.remove(old); playerMeshes.delete(player.id); }
+  const mesh = createPlayerMesh(player); mesh.visible = player.floor === localPlayer.floor;
+  playerMeshes.set(player.id, mesh); scene.add(mesh);
+  if (local) localPlayer.mesh = mesh;
 }
-function removeRemotePlayer(id) {
-  const mesh = worldPlayers.get(id);
-  if (!mesh) return;
-  scene.remove(mesh); worldPlayers.delete(id); remotePlayers.delete(id);
-}
-function updateInventoryUI() {
+function updateInventory() {
   ui.inventoryList.replaceChildren();
-  (localPlayer.inventory.length ? localPlayer.inventory : ['Empty']).forEach((item) => {
-    const li = document.createElement('li'); li.textContent = item; ui.inventoryList.appendChild(li);
-  });
+  (localPlayer.inventory.length ? localPlayer.inventory : ['Empty']).forEach((item) => { const li = document.createElement('li'); li.textContent = item; ui.inventoryList.appendChild(li); });
 }
-function updateRoleUI() {
+function updateHUD() {
   ui.roleLabel.textContent = `Role: ${localPlayer.role || 'None'}`;
-  ui.floorLabel.textContent = `Floor: ${floorNames[localPlayer.floor] || 'U3'}`;
-  updateInventoryUI();
-  if (ui.abilityButton && localPlayer.role) ui.abilityButton.textContent = localPlayer.role === 'medic' ? 'Heal' : localPlayer.role === 'orderly' ? 'Stun' : localPlayer.role === 'director' ? 'Tablet' : 'Use item';
+  ui.floorLabel.textContent = `Floor: ${floorNames[localPlayer.floor] || 'Ground'}`;
+  updateInventory();
+  if (ui.abilityButton && localPlayer.role) ui.abilityButton.textContent = ({ medic: 'Heal', orderly: 'Stun', director: 'Tablet', patient: 'Use item' })[localPlayer.role];
 }
 function setRole(role) {
   if (!roleInfo[role]) return;
   localPlayer.role = role; localPlayer.color = roleInfo[role].color; localPlayer.inventory = [...roleInfo[role].inventory];
-  const spawn = roleSpawns[role]; localPlayer.x = spawn.x; localPlayer.z = spawn.z; localPlayer.floor = spawn.floor;
+  Object.assign(localPlayer, roleSpawns[role]);
   localPlayer.name = ui.playerName.value.trim() || 'Player';
-  if (localPlayer.mesh) scene.remove(localPlayer.mesh);
-  localPlayer.mesh = createPlayerMesh({ ...localPlayer, id: socket.id }, true); scene.add(localPlayer.mesh);
-  updateRoleUI(); socket.emit('joinGame', { name: localPlayer.name, role });
+  updateHUD(); addPlayer({ ...localPlayer, id: socket.id }, true); setActiveFloor(localPlayer.floor);
+  socket.emit('joinGame', { name: localPlayer.name, role });
   ui.joinScreen.classList.add('hidden');
 }
 function publishPlayer(force = false) {
   const now = performance.now();
-  if (!force && now - lastNetworkUpdate < 80) return;
+  if (!force && now - lastNetworkUpdate < 75) return;
   lastNetworkUpdate = now;
-  socket.emit('updatePlayer', { x: localPlayer.x, y: floorData[localPlayer.floor].y + 1.2, z: localPlayer.z, floor: localPlayer.floor, role: localPlayer.role, name: localPlayer.name, stunned: localPlayer.stunned, health: localPlayer.health });
+  socket.emit('updatePlayer', { x: localPlayer.x, y: floors[localPlayer.floor].y + 1, z: localPlayer.z, floor: localPlayer.floor, role: localPlayer.role, name: localPlayer.name, stunned: localPlayer.stunned, health: localPlayer.health });
 }
-function handleMovement(delta) {
+function movePlayer(delta) {
   if (!localPlayer.role || localPlayer.stunned) return;
-  let dx = touchInput.x; let dz = touchInput.z;
-  if (keys.KeyW || keys.ArrowUp) dz -= 1;
-  if (keys.KeyS || keys.ArrowDown) dz += 1;
-  if (keys.KeyA || keys.ArrowLeft) dx -= 1;
-  if (keys.KeyD || keys.ArrowRight) dx += 1;
-  const length = Math.hypot(dx, dz);
-  if (!length) return;
-  dx /= Math.max(1, length); dz /= Math.max(1, length);
-  const sprinting = keys.ShiftLeft || keys.ShiftRight || touchInput.sprint;
-  const speed = sprinting ? 8 : 5.5;
-  localPlayer.x = THREE.MathUtils.clamp(localPlayer.x + dx * speed * delta, -18.8, 18.8);
-  localPlayer.z = THREE.MathUtils.clamp(localPlayer.z + dz * speed * delta, -14.8, 14.8);
+  let inputX = touchInput.x; let inputForward = -touchInput.z;
+  if (keys.KeyW || keys.ArrowUp) inputForward += 1;
+  if (keys.KeyS || keys.ArrowDown) inputForward -= 1;
+  if (keys.KeyA || keys.ArrowLeft) inputX -= 1;
+  if (keys.KeyD || keys.ArrowRight) inputX += 1;
+  const magnitude = Math.hypot(inputX, inputForward);
+  if (magnitude < 0.05) return;
+  inputX /= Math.max(1, magnitude); inputForward /= Math.max(1, magnitude);
+  // Movement axes follow the current camera yaw rather than fixed world compass directions.
+  const rightX = Math.cos(cameraYaw); const rightZ = -Math.sin(cameraYaw);
+  const forwardX = -Math.sin(cameraYaw); const forwardZ = -Math.cos(cameraYaw);
+  const dx = rightX * inputX + forwardX * inputForward;
+  const dz = rightZ * inputX + forwardZ * inputForward;
+  const speed = keys.ShiftLeft || keys.ShiftRight || touchInput.sprint ? 8.5 : 5.6;
+  const oldX = localPlayer.x; const oldZ = localPlayer.z;
+  localPlayer.x = THREE.MathUtils.clamp(localPlayer.x + dx * speed * delta, -HALF_W + 1.3, HALF_W - 1.3);
+  localPlayer.z = THREE.MathUtils.clamp(localPlayer.z + dz * speed * delta, -HALF_D + 1.3, HALF_D - 1.3);
+  // Stop the avatar at solid walls while still allowing movement through the deliberate room openings.
+  const playerBox = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(localPlayer.x, floors[localPlayer.floor].y + 1, localPlayer.z), new THREE.Vector3(0.9, 1.9, 0.9));
+  const blocked = floorWalls.get(localPlayer.floor).some((wall) => playerBox.intersectsBox(new THREE.Box3().setFromObject(wall)));
+  if (blocked) { localPlayer.x = oldX; localPlayer.z = oldZ; }
   if (localPlayer.mesh) localPlayer.mesh.rotation.y = Math.atan2(dx, dz) + Math.PI;
   publishPlayer();
 }
-function tryUseStairs() {
+const stairPoints = [{ x: -36, z: 0 }, { x: 36, z: 0 }];
+function useStairs() {
   if (!localPlayer.role) return;
-  const stair = stairs.find((item) => Math.hypot(localPlayer.x - item.x, localPlayer.z - item.z) < 3 && localPlayer.floor === item.floor);
-  if (!stair) { ui.statusLabel.textContent = 'Move closer to the stairs'; return; }
-  localPlayer.floor = stair.targetFloor; ui.statusLabel.textContent = `Moving to ${floorNames[localPlayer.floor]}`;
-  updateRoleUI(); publishPlayer(true);
+  const near = stairPoints.some((p) => Math.hypot(localPlayer.x - p.x, localPlayer.z - p.z) < 5);
+  if (!near) { ui.statusLabel.textContent = 'Gehe zu einem der Treppenhäuser'; return; }
+  // E uses the connected stairwell: ascend from U3, descend elsewhere; U1 can go either way.
+  if (localPlayer.floor === 3) localPlayer.floor = 2;
+  else if (localPlayer.floor === 0) localPlayer.floor = 1;
+  else localPlayer.floor += keys.AltLeft || keys.AltRight ? 1 : -1;
+  localPlayer.floor = THREE.MathUtils.clamp(localPlayer.floor, 0, 3);
+  ui.statusLabel.textContent = `Etage: ${floorNames[localPlayer.floor]}`;
+  setActiveFloor(localPlayer.floor); updateHUD(); publishPlayer(true);
 }
-function tryUseAbility() {
+function useAbility() {
   if (!localPlayer.role) return;
-  if (localPlayer.role === 'director') ui.statusLabel.textContent = 'Director tablet ability';
-  else if (localPlayer.role === 'medic') { localPlayer.health = Math.min(100, localPlayer.health + 20); ui.statusLabel.textContent = 'Medic ability used'; }
-  else if (localPlayer.role === 'orderly') ui.statusLabel.textContent = 'Orderly ability used';
-  else ui.statusLabel.textContent = 'Patient item used';
-  socket.emit('useAbility', { ability: roleInfo[localPlayer.role].ability }); publishPlayer(true);
+  if (localPlayer.role === 'medic') { localPlayer.health = Math.min(100, localPlayer.health + 20); ui.statusLabel.textContent = 'Medic: Heilung benutzt'; }
+  else if (localPlayer.role === 'director') ui.statusLabel.textContent = 'Director: Tablet benutzt';
+  else if (localPlayer.role === 'orderly') ui.statusLabel.textContent = 'Orderly: Ausrüstung benutzt';
+  else ui.statusLabel.textContent = 'Patient: Glass Shard benutzt';
+  socket.emit('useAbility', { ability: localPlayer.role }); publishPlayer(true);
 }
-function setupTouchControls() {
+function setupTouch() {
   const pad = document.getElementById('movePad'); const stick = document.getElementById('moveStick');
-  if (!pad || !stick) return;
   let pointerId = null;
-  const reset = () => { pointerId = null; touchInput.x = 0; touchInput.z = 0; stick.style.transform = 'translate(-50%, -50%)'; };
-  const updateStick = (event) => {
+  const reset = () => { pointerId = null; touchInput.x = touchInput.z = 0; stick.style.transform = 'translate(-50%, -50%)'; };
+  const update = (event) => {
     if (pointerId !== event.pointerId) return;
-    const rect = pad.getBoundingClientRect(); const radius = rect.width * 0.32;
-    const rawX = event.clientX - (rect.left + rect.width / 2); const rawY = event.clientY - (rect.top + rect.height / 2);
-    const distance = Math.hypot(rawX, rawY) || 1; const scale = Math.min(1, radius / distance);
-    const x = rawX * scale; const y = rawY * scale;
-    touchInput.x = x / radius; touchInput.z = y / radius;
+    const r = pad.getBoundingClientRect(); const radius = r.width * 0.32;
+    const rawX = event.clientX - r.left - r.width / 2; const rawY = event.clientY - r.top - r.height / 2;
+    const length = Math.hypot(rawX, rawY) || 1; const k = Math.min(1, radius / length);
+    const x = rawX * k; const y = rawY * k; touchInput.x = x / radius; touchInput.z = y / radius;
     stick.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
   };
-  pad.addEventListener('pointerdown', (event) => { event.preventDefault(); pointerId = event.pointerId; pad.setPointerCapture(pointerId); updateStick(event); });
-  pad.addEventListener('pointermove', updateStick);
-  pad.addEventListener('pointerup', (event) => { if (pointerId === event.pointerId) reset(); });
-  pad.addEventListener('pointercancel', reset);
-  ui.sprintButton.addEventListener('pointerdown', (event) => { event.preventDefault(); touchInput.sprint = !touchInput.sprint; ui.sprintButton.classList.toggle('active', touchInput.sprint); });
-  document.getElementById('interactButton').addEventListener('click', tryUseStairs);
-  ui.abilityButton.addEventListener('click', tryUseAbility);
+  pad.addEventListener('pointerdown', (e) => { e.preventDefault(); pointerId = e.pointerId; pad.setPointerCapture(pointerId); update(e); });
+  pad.addEventListener('pointermove', update); pad.addEventListener('pointerup', (e) => { if (pointerId === e.pointerId) reset(); }); pad.addEventListener('pointercancel', reset);
+  ui.sprintButton.addEventListener('pointerdown', (e) => { e.preventDefault(); touchInput.sprint = !touchInput.sprint; ui.sprintButton.classList.toggle('active', touchInput.sprint); });
+  document.getElementById('interactButton').addEventListener('click', useStairs); ui.abilityButton.addEventListener('click', useAbility);
 }
-function setupCameraControls() {
+function setupCameraInput() {
   const canvas = renderer.domElement;
-  canvas.addEventListener('pointerdown', (event) => {
-    if (event.button !== undefined && event.button !== 0) return;
-    draggingCamera = true; previousPointer = { x: event.clientX, y: event.clientY, id: event.pointerId };
-    try { canvas.setPointerCapture(event.pointerId); } catch (_error) { /* Safari may not capture every pointer */ }
+  canvas.addEventListener('pointerdown', (e) => { if (e.button !== undefined && e.button !== 0) return; draggingCamera = true; previousPointer = { x: e.clientX, y: e.clientY, id: e.pointerId }; try { canvas.setPointerCapture(e.pointerId); } catch (_) {} });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!draggingCamera || !previousPointer || previousPointer.id !== e.pointerId) return;
+    cameraYaw -= (e.clientX - previousPointer.x) * 0.006;
+    cameraPitch = THREE.MathUtils.clamp(cameraPitch + (e.clientY - previousPointer.y) * 0.004, 0.12, 0.86);
+    previousPointer = { x: e.clientX, y: e.clientY, id: e.pointerId };
   });
-  canvas.addEventListener('pointermove', (event) => {
-    if (!draggingCamera || !previousPointer || previousPointer.id !== event.pointerId) return;
-    const dx = event.clientX - previousPointer.x; const dy = event.clientY - previousPointer.y;
-    previousPointer = { x: event.clientX, y: event.clientY, id: event.pointerId };
-    cameraYaw -= dx * 0.006;
-    cameraPitch = THREE.MathUtils.clamp(cameraPitch + dy * 0.004, -0.08, 0.9);
-  });
-  const stop = () => { draggingCamera = false; previousPointer = null; };
-  canvas.addEventListener('pointerup', stop); canvas.addEventListener('pointercancel', stop); canvas.addEventListener('lostpointercapture', stop);
-  canvas.addEventListener('wheel', (event) => { cameraDistance = THREE.MathUtils.clamp(cameraDistance + event.deltaY * 0.01, 7, 20); }, { passive: true });
-}
-async function toggleFullscreen() {
-  try {
-    if (document.fullscreenElement || document.webkitFullscreenElement) {
-      if (document.exitFullscreen) await document.exitFullscreen(); else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-      return;
-    }
-    const root = document.documentElement;
-    if (root.requestFullscreen) await root.requestFullscreen({ navigationUI: 'hide' });
-    else if (root.webkitRequestFullscreen) root.webkitRequestFullscreen();
-    else ui.statusLabel.textContent = 'iPhone Safari: Share → Add to Home Screen';
-  } catch (_error) { ui.statusLabel.textContent = 'Fullscreen unavailable in this browser'; }
-}
-function setupInput() {
-  document.addEventListener('keydown', (event) => { keys[event.code] = true; if (event.code === 'KeyE') tryUseStairs(); if (event.code === 'KeyQ') tryUseAbility(); });
-  document.addEventListener('keyup', (event) => { keys[event.code] = false; });
-  document.querySelectorAll('.roleButton').forEach((button) => button.addEventListener('click', () => setRole(button.dataset.role)));
-  if (isTouchDevice) { ui.fullscreenButton.hidden = false; ui.fullscreenButton.addEventListener('click', toggleFullscreen); }
+  const end = () => { draggingCamera = false; previousPointer = null; };
+  canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end); canvas.addEventListener('lostpointercapture', end);
+  canvas.addEventListener('wheel', (e) => { cameraDistance = THREE.MathUtils.clamp(cameraDistance + e.deltaY * 0.01, 7, 20); }, { passive: true });
 }
 function updateCamera() {
-  const focus = new THREE.Vector3(localPlayer.x, floorData[localPlayer.floor].y + 1.35, localPlayer.z);
-  const horizontal = Math.cos(cameraPitch) * cameraDistance;
-  const desired = new THREE.Vector3(
-    focus.x + Math.sin(cameraYaw) * horizontal,
-    focus.y + Math.sin(cameraPitch) * cameraDistance,
-    focus.z + Math.cos(cameraYaw) * horizontal
-  );
-  const rayDirection = desired.clone().sub(focus).normalize();
-  wallRaycaster.set(focus, rayDirection);
-  wallRaycaster.far = cameraDistance;
-  const hits = wallRaycaster.intersectObjects(wallMeshes, false);
-  if (hits.length) desired.copy(hits[0].point).addScaledVector(rayDirection, -0.45);
-  // Keep the camera inside the building footprint and above the current floor.
-  desired.x = THREE.MathUtils.clamp(desired.x, -20.2, 20.2);
-  desired.z = THREE.MathUtils.clamp(desired.z, -16.2, 16.2);
-  desired.y = Math.max(floorData[localPlayer.floor].y + 0.75, desired.y);
-  camera.position.lerp(desired, 0.2);
-  camera.lookAt(focus);
+  const focus = new THREE.Vector3(localPlayer.x, floors[localPlayer.floor].y + 1.25, localPlayer.z);
+  const horiz = Math.cos(cameraPitch) * cameraDistance;
+  const desired = new THREE.Vector3(focus.x + Math.sin(cameraYaw) * horiz, focus.y + Math.sin(cameraPitch) * cameraDistance, focus.z + Math.cos(cameraYaw) * horiz);
+  const walls = floorWalls.get(localPlayer.floor) || [];
+  raycaster.set(focus, desired.clone().sub(focus).normalize()); raycaster.far = cameraDistance;
+  const hit = raycaster.intersectObjects(walls, false)[0];
+  if (hit) desired.copy(hit.point).addScaledVector(raycaster.ray.direction, -0.65);
+  desired.x = THREE.MathUtils.clamp(desired.x, -HALF_W + 1, HALF_W - 1);
+  desired.z = THREE.MathUtils.clamp(desired.z, -HALF_D + 1, HALF_D - 1);
+  desired.y = Math.max(floors[localPlayer.floor].y + 2.4, desired.y);
+  camera.position.lerp(desired, 0.22); camera.lookAt(focus);
 }
-function tick(now) {
-  const delta = Math.min((now - previousFrame) / 1000, 0.05); previousFrame = now;
-  handleMovement(delta); updateCamera();
-  if (localPlayer.mesh) localPlayer.mesh.position.set(localPlayer.x, floorData[localPlayer.floor].y, localPlayer.z);
-  worldPlayers.forEach((mesh, id) => {
-    const remote = remotePlayers.get(id); if (!remote) return;
-    const floorY = floorData[remote.floor]?.y || 0;
-    mesh.position.lerp(new THREE.Vector3(remote.x, floorY, remote.z), 0.22);
-  });
-  renderer.render(scene, camera); requestAnimationFrame(tick);
+function setupInput() {
+  document.addEventListener('keydown', (e) => { keys[e.code] = true; if (e.code === 'KeyE') useStairs(); if (e.code === 'KeyQ') useAbility(); });
+  document.addEventListener('keyup', (e) => { keys[e.code] = false; });
+  document.querySelectorAll('.roleButton').forEach((b) => b.addEventListener('click', () => setRole(b.dataset.role)));
+  if (isTouchDevice) { ui.fullscreenButton.hidden = false; ui.fullscreenButton.addEventListener('click', async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); else ui.statusLabel.textContent = 'Safari: Teilen → Zum Home-Bildschirm'; } catch (_) { ui.statusLabel.textContent = 'Vollbild ist in diesem Browser nicht verfügbar'; } }); }
+}
+function frame(now) {
+  const delta = Math.min((now - lastFrame) / 1000, 0.05); lastFrame = now;
+  movePlayer(delta); updateCamera();
+  if (localPlayer.mesh) { localPlayer.mesh.position.set(localPlayer.x, floors[localPlayer.floor].y, localPlayer.z); localPlayer.mesh.visible = true; }
+  for (const [id, mesh] of playerMeshes) {
+    if (id === socket.id) continue;
+    const state = remotePlayers.get(id); if (!state) continue;
+    mesh.visible = state.floor === localPlayer.floor;
+    if (mesh.visible) { const floorY = floors[state.floor].y; mesh.position.lerp(new THREE.Vector3(state.x, floorY, state.z), 0.25); mesh.rotation.y = state.rotation || mesh.rotation.y; }
+  }
+  renderer.render(scene, camera); requestAnimationFrame(frame);
 }
 
-socket.on('assignedPlayer', (player) => {
-  localPlayer.id = player.id; localPlayer.name = player.name; localPlayer.role = player.role;
-  localPlayer.color = roleInfo[player.role].color; localPlayer.inventory = [...roleInfo[player.role].inventory];
-  localPlayer.floor = player.floor; localPlayer.x = player.x; localPlayer.z = player.z;
-  if (localPlayer.mesh) scene.remove(localPlayer.mesh);
-  localPlayer.mesh = createPlayerMesh({ ...localPlayer, id: player.id }, true); scene.add(localPlayer.mesh);
-  updateRoleUI();
+socket.on('assignedPlayer', (p) => {
+  localPlayer.id = p.id; localPlayer.name = p.name; localPlayer.role = p.role;
+  localPlayer.color = roleInfo[p.role]?.color || '#fff'; localPlayer.inventory = [...(roleInfo[p.role]?.inventory || [])];
+  localPlayer.floor = THREE.MathUtils.clamp(Number(p.floor) || 0, 0, 3); localPlayer.x = Number(p.x) || 0; localPlayer.z = Number(p.z) || 0;
+  addPlayer({ ...localPlayer, id: p.id }, true); setActiveFloor(localPlayer.floor); updateHUD();
 });
-socket.on('playersState', (players) => {
-  const incoming = new Set(players.map((player) => player.id));
-  players.forEach((player) => {
-    if (player.id !== socket.id) { addRemotePlayer(player); remotePlayers.set(player.id, player); }
-  });
-  for (const id of worldPlayers.keys()) if (!incoming.has(id)) removeRemotePlayer(id);
-  if (players.length === 1 && localPlayer.role) ui.statusLabel.textContent = 'You are alone in the facility';
+socket.on('playersState', (list) => {
+  const live = new Set(list.map((p) => p.id));
+  for (const p of list) if (p.id !== socket.id) {
+    remotePlayers.set(p.id, p);
+    const existing = playerMeshes.get(p.id);
+    if (!existing || existing.userData.role !== p.role) addPlayer(p);
+  }
+  for (const id of playerMeshes.keys()) if (id !== socket.id && !live.has(id)) { scene.remove(playerMeshes.get(id)); playerMeshes.delete(id); remotePlayers.delete(id); }
+  if (list.length === 1 && localPlayer.role) ui.statusLabel.textContent = 'Du bist allein im Gebäude';
 });
 socket.on('abilityFeedback', (feedback) => { if (feedback?.message) ui.statusLabel.textContent = feedback.message; });
 
-setupWorld(); setupInput(); setupTouchControls(); setupCameraControls(); updateRoleUI(); requestAnimationFrame(tick);
-window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
-document.addEventListener('fullscreenchange', () => { ui.fullscreenButton.textContent = document.fullscreenElement ? '⛶ Exit fullscreen' : '⛶ Fullscreen'; });
+buildWorld(); setupInput(); setupTouch(); setupCameraInput(); updateHUD(); requestAnimationFrame(frame);
+window.addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+document.addEventListener('fullscreenchange', () => { ui.fullscreenButton.textContent = document.fullscreenElement ? '⛶ Vollbild verlassen' : '⛶ Vollbild'; });
