@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Asylum Break</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="hud">
+      <div id="topBar">
+        <span id="roleLabel">Role: None</span>
+        <span id="floorLabel">Floor: U3</span>
+        <span id="statusLabel">Waiting</span>
+      </div>
+      <div id="helpPanel">
+        <strong>Controls</strong><br />
+        WASD = move<br />
+        E = use stairs / interact<br />
+        Shift = sprint<br />
+        Q = open Director door / use ability
+      </div>
+      <div id="inventoryPanel">
+        <strong>Inventory</strong>
+        <ul id="inventoryList">
+          <li>Empty</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="joinScreen">
+      <div class="panel">
+        <h1>Asylum Break</h1>
+        <label>
+          Name
+          <input id="playerName" maxlength="16" value="Player" />
+        </label>
+
+        <div class="roles">
+          <button class="roleButton" data-role="patient">Patient</button>
+          <button class="roleButton" data-role="medic">Medic</button>
+          <button class="roleButton" data-role="orderly">Orderly</button>
+          <button class="roleButton" data-role="director">Director</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="./game.js"></script>
+  </body>
+</html>
