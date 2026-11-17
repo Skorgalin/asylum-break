@@ -10,7 +10,9 @@ const STAIR_SEED = Number(process.env.STAIR_SEED) || 1 + Math.floor(Math.random(
 globalThis.STAIR_SEED = STAIR_SEED;
 const LAYOUT = require('./public/layout.js');
 
-const VERSION = '2026.11.17-1';
+const VERSION = '2026.11.17-2';
+// Changes on every start (each deploy restarts the server), so open pages can tell they are out of date.
+const BUILD = `${VERSION}-${Date.now().toString(36)}`;
 const app = express();
 app.disable('x-powered-by');
 const server = http.createServer(app);
@@ -42,14 +44,11 @@ const SESSION_TTL_MS = 60_000;
 const TICK_MS = 100;
 const EVENTS_PER_SECOND = 30;
 const RESPAWN_MS = 5000;
-const PICKUP_RADIUS = 2;
-const PICKUP_RESPAWN_MS = 40_000;
 const PLAYER_RADIUS = 0.6;
 const CARRY_HEIGHT = 2.2;
 // Hiding in a prop is slow going.
 const LOOK_SPEED = { box: 0.6, bush: 0.35 };
 const ZONE_TYPES = new Set(['fire', 'gas', 'healing', 'jam']);
-const PICKUP_SPOTS = LAYOUT.PICKUPS.map(spot => ({ ...spot, pool: LAYOUT.LOOT[spot.pool] }));
 
 const players = new Map();
 const sessions = new Map(); // session token -> { player, expires } for players that dropped connection
@@ -57,7 +56,6 @@ const zones = new Map(); // id -> fire, gas, healing and jammer areas
 const mines = new Map(); // id -> placed floor mines
 const devices = new Map(); // id -> drones and turrets
 let devicesDirty = false;
-const pickups = PICKUP_SPOTS.map((spot, id) => ({ id, ...spot, item: null, respawnAt: 0 }));
 const doors = SECURE_DOORS.map(def => ({ ...def, hp: DOOR.hp, brokenUntil: 0, weldedUntil: 0, open: false }));
 let doorsDirty = true;
 const VEHICLE = { range: 3, idleReturnMs: 120_000, seatHeight: 0.9 };
@@ -65,7 +63,6 @@ const vehicles = LAYOUT.VEHICLES.map(spot => ({ ...spot, def: VEHICLE_TYPES[spot
 let vehiclesDirty = true;
 let nextEntityId = 1;
 let dirty = false;
-let pickupsDirty = true;
 
 app.get('/layout-seed.js', (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -622,27 +619,6 @@ function useItem(player) {
   }
   sendSelf(player);
 }
-function tryPickup(player) {
-  if (isDown(player)) return;
-  for (const pickup of pickups) {
-    if (!pickup.item || pickup.floor !== player.floor || Math.hypot(pickup.x - player.x, pickup.z - player.z) > PICKUP_RADIUS) continue;
-    if (!canUse(player, pickup.item)) continue;
-    const owned = player.inventory.find(slot => slot.item === pickup.item);
-    if (owned && owned.uses === null) continue; // Already holding this weapon.
-    if (owned) owned.uses += ITEMS[pickup.item].uses;
-    else if (player.inventory.length >= MAX_SLOTS) { notify(player, 'Inventory full'); continue; }
-    else player.inventory.push(makeSlot(pickup.item));
-    notify(player, `Picked up ${ITEMS[pickup.item].name}`);
-    pickup.item = null;
-    pickup.respawnAt = Date.now() + PICKUP_RESPAWN_MS;
-    pickupsDirty = true;
-    sendSelf(player);
-  }
-}
-function pickupList() {
-  return pickups.filter(pickup => pickup.item).map(({ id, floor, x, z, item }) => ({ id, floor, x, z, item }));
-}
-
 // ---- Devices -------------------------------------------------------------------------------------
 
 function devicesInFront(player, range, arc) {
@@ -839,7 +815,13 @@ function cancelWork(player, message) {
   if (message) notify(player, message);
   sendSelf(player);
 }
+// Vending machines hand out anything from their loot pool the player may use. Free for now, so they
+// leave out goods that sell for credits (free contraband would be free money).
+const VENDING_PRICE = 0;
 function shopList(player, station) {
+  if (station.type === 'vending') {
+    return [...new Set(LAYOUT.LOOT[station.pool])].filter(item => canUse(player, item) && !ITEMS[item].value).map(item => ({ item, price: VENDING_PRICE }));
+  }
   return Object.entries(ITEMS)
     .filter(([item, def]) => def.price && (def.team === 'all' || def.team === station.team) && canUse(player, item))
     .map(([item, def]) => ({ item, price: def.price }));
@@ -854,6 +836,11 @@ const STATION_HANDLERS = {
     if (teamOf(player.role) !== station.team) { notify(player, `${station.label} · not for you`); return; }
     const value = player.inventory.reduce((sum, slot) => sum + (ITEMS[slot.item].value ?? 0), 0);
     socket.emit('shop', { station: station.id, label: station.label, credits: player.credits, items: shopList(player, station), sell: value });
+  },
+  vending(player, station, socket) {
+    const items = shopList(player, station);
+    if (!items.length) { notify(player, `${station.label} · nothing for you`); return; }
+    socket.emit('shop', { station: station.id, label: station.label, credits: player.credits, items, sell: 0 });
   },
   job(player, station) {
     const def = JOBS[station.job];
@@ -997,15 +984,17 @@ const vehicleList = () => vehicles.map(({ id, type, floor, x, z, yaw, driver, pa
 function buy(player, item) {
   const station = nearestStation(player);
   const def = ITEMS[item];
-  if (!station || station.type !== 'shop' || teamOf(player.role) !== station.team || !def?.price) return;
-  if (!shopList(player, station).some(entry => entry.item === item)) return;
-  if (player.credits < def.price) { notify(player, 'Not enough credits'); return; }
+  if (!station || isDown(player)) return;
+  if (station.type === 'shop' ? teamOf(player.role) !== station.team : station.type !== 'vending') return;
+  const entry = shopList(player, station).find(offer => offer.item === item);
+  if (!entry) return;
+  if (player.credits < entry.price) { notify(player, 'Not enough credits'); return; }
   const owned = player.inventory.find(slot => slot.item === item);
   if (owned && owned.uses === null) { notify(player, 'You already have one'); return; }
   if (!owned && player.inventory.length >= MAX_SLOTS) { notify(player, 'Inventory full'); return; }
-  player.credits -= def.price;
+  player.credits -= entry.price;
   if (owned) owned.uses += def.uses; else player.inventory.push(makeSlot(item));
-  notify(player, `Bought ${def.name}`);
+  notify(player, entry.price ? `Bought ${def.name}` : `Took ${def.name}`);
   sendSelf(player);
 }
 function sellContraband(player) {
@@ -1082,12 +1071,6 @@ setInterval(() => {
       break;
     }
   }
-  for (const pickup of pickups) {
-    if (pickup.item || pickup.respawnAt > now) continue;
-    pickup.item = pickup.pool[Math.floor(Math.random() * pickup.pool.length)];
-    pickupsDirty = true;
-  }
-  if (pickupsDirty) { pickupsDirty = false; io.emit('pickups', pickupList()); }
 
   if (!dirty) return;
   dirty = false;
@@ -1095,8 +1078,7 @@ setInterval(() => {
 }, TICK_MS);
 
 io.on('connection', socket => {
-  socket.emit('serverReady', { ok: true, version: VERSION });
-  socket.emit('pickups', pickupList());
+  socket.emit('serverReady', { ok: true, version: VERSION, build: BUILD });
   socket.emit('doors', doorList());
   socket.emit('world', worldState());
   socket.emit('vehicles', vehicleList());
@@ -1201,7 +1183,6 @@ io.on('connection', socket => {
     player.air = finiteClamp(data.air, 0, MAX_JUMP, 0);
     player.y = FLOOR_Y[player.floor] + stairHeight(player.floor, player.x, player.z);
     if (corrected) socket.emit('positionCorrection', { x: player.x, z: player.z, floor: player.floor });
-    tryPickup(player);
     dirty = true;
   });
 

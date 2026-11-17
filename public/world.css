@@ -37,7 +37,11 @@
 .chat-line.faded{opacity:0}
 #chatForm{position:absolute;left:16px;bottom:116px;width:min(420px,calc(100vw - 32px));display:none;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;background:rgba(8,14,20,.9);border:1px solid rgba(125,211,252,.45);pointer-events:auto}
 #chatForm.open{display:flex}
-#chatChannel{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#7dd3fc;white-space:nowrap}
-#chatInput{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#eef5ff;font:inherit;font-size:13px}
-.touch-device #chatLog{bottom:200px}
-.touch-device #chatForm{bottom:170px}
+#chatChannel{padding:4px 6px;border:1px solid rgba(125,211,252,.35);border-radius:6px;background:transparent;font:inherit;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#7dd3fc;white-space:nowrap;cursor:pointer}
+/* 16px or more: below that, iOS Safari zooms the whole page in when the field gets focus. */
+#chatInput{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#eef5ff;font:inherit;font-size:16px}
+/* On phones the keyboard covers the bottom half, so the chat sits up under the panels. */
+.touch-device #chatForm{bottom:auto;top:240px}
+.touch-device #chatLog{bottom:auto;top:286px}
+/* The stamina bar makes the vitals panel taller; keep the objective panel below it on phones. */
+@media (max-width:560px){.touch-device #objectivePanel{top:138px}}

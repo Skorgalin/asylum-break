@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="./style.css?v=20261115-1" />
   <link rel="stylesheet" href="./ui-fixes.css?v=20261115-2" />
   <link rel="stylesheet" href="./items.css?v=20261115-5" />
-  <link rel="stylesheet" href="./world.css?v=20261117-3" />
+  <link rel="stylesheet" href="./world.css?v=20261117-5" />
 </head>
 <body>
   <div id="loadingScreen" class="loading-screen" aria-live="polite">
@@ -24,11 +24,11 @@
     <div id="statusEffect" aria-live="polite"></div>
     <div id="interactPrompt" aria-live="polite"></div>
     <div id="chatLog" aria-live="polite"></div>
-    <form id="chatForm" autocomplete="off"><span id="chatChannel">Radio</span><input id="chatInput" maxlength="120" placeholder="Message · Tab switches channel" /></form>
+    <form id="chatForm" autocomplete="off"><button id="chatChannel" type="button" title="Switch channel (Tab)">Radio</button><input id="chatInput" maxlength="120" enterkeyhint="send" placeholder="Message" /></form>
     <div id="workBar"><span id="workLabel"></span><div class="work-track"><div id="workFill"></div></div></div>
     <div id="damageFlash" aria-hidden="true"></div>
     <div id="inventoryPanel"><div class="panel-heading"><strong>LOADOUT</strong><span>Tap or press 1–6</span></div><div id="equipmentSlots"></div></div>
-    <div id="helpPanel"><strong>FIELD MANUAL</strong><br />WASD / arrows · move<br />Shift · sprint<br />Drag · look around<br />Space · jump<br />Walk up the stairs to change floors<br />Click · use item<br />1–6 · pick item<br />Walk over loot to grab it<br />E · interact (shops, jobs, exit)<br />Enter / T · chat (Tab: team or all)<br />Q · class ability<br />V · first / third person<br />Wheel · zoom</div>
+    <div id="helpPanel"><strong>FIELD MANUAL</strong><br />WASD / arrows · move<br />Shift · sprint<br />Drag · look around<br />Space · jump<br />Walk up the stairs to change floors<br />Click · use item<br />1–6 · pick item<br />E · interact (vending machines, shops, jobs, exit)<br />Enter / T · chat (Tab: team or all)<br />Q · class ability<br />V · first / third person<br />Wheel · zoom</div>
   </div>
   <div id="mobileControls" aria-label="Touch controls">
     <div id="joystickZone" aria-label="Move joystick"><div id="movePad"><div id="moveStick"></div></div></div>
@@ -82,6 +82,6 @@
   <script src="./items.js?v=20261117-5"></script>
   <script src="./layout-seed.js"></script>
   <script src="./layout.js?v=20261117-7"></script>
-  <script type="module" src="./game.js?v=20261117-9"></script>
+  <script type="module" src="./game.js?v=20261117-11"></script>
 </body>
 </html>

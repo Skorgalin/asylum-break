@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { makeItemModel, EffectLayer } from './item-visuals.js?v=20261117-6';
 import { loadCharacterModels, buildCharacterModel } from './characters.js?v=20261115-2';
 import { buildInterior, MAINS_LIGHTING } from './interior.js?v=20261117-1';
-import { createWorld } from './world.js?v=20261117-8';
+import { createWorld } from './world.js?v=20261117-9';
 
 const ITEMS = window.ITEMS || {};
 const LAYOUT = window.LAYOUT;
@@ -130,27 +130,6 @@ loadCharacterModels(role => {
   }
 });
 const effects = new EffectLayer({ floors, floorY: FLOOR_Y, actorFor: id => (id === state.id ? state.actor : remoteActors.get(id)) });
-// Loot lying around the map: a slowly spinning item over a glowing ring. Walk over it to pick it up.
-const pickupMeshes = new Map();
-const pickupRingMaterial = new THREE.MeshBasicMaterial({ color: 0x7de4c8, transparent: true, opacity: 0.55 });
-const PICKUP_RING = new THREE.RingGeometry(0.7, 0.95, 24);
-function syncPickups(list) {
-  const present = new Set();
-  for (const pickup of list) {
-    if (!pickup || !ITEMS[pickup.item] || !floors[pickup.floor]) continue;
-    const key = `${pickup.id}:${pickup.item}`;
-    present.add(key);
-    if (pickupMeshes.has(key)) continue;
-    const group = new THREE.Group();
-    const ring = new THREE.Mesh(PICKUP_RING, pickupRingMaterial); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; group.add(ring);
-    const model = makeItemModel(pickup.item, ITEMS[pickup.item].color); model.scale.setScalar(1.4); model.position.y = 1; group.add(model);
-    group.userData.model = model;
-    group.position.set(pickup.x, FLOOR_Y[pickup.floor], pickup.z);
-    floors[pickup.floor].add(group);
-    pickupMeshes.set(key, group);
-  }
-  for (const [key, group] of pickupMeshes) if (!present.has(key)) { group.parent?.remove(group); pickupMeshes.delete(key); }
-}
 // Full white for the first part of the flash, then a slow fade back to normal sight.
 function updateBlind(now) {
   const overlay = document.getElementById('flashBlind');
@@ -690,6 +669,13 @@ function leaveToJoinScreen(message) {
 document.querySelectorAll('.roleButton').forEach(button => button.addEventListener('click', () => chooseRole(button.dataset.role)));
 
 if (socket) {
+  // After a deploy the server comes back as a new build; reload so nobody keeps playing an old client
+  // (without the newer HUD, chat or stamina) against the new server.
+  let serverBuild = null;
+  socket.on('serverReady', data => {
+    if (serverBuild && data?.build && data.build !== serverBuild) location.reload();
+    serverBuild = data?.build ?? serverBuild;
+  });
   socket.on('connect', () => { document.getElementById('statusLabel').textContent = state.role ? 'NETWORK · CONNECTED' : 'NETWORK · READY'; sendJoin(); });
   socket.on('disconnect', () => { document.getElementById('statusLabel').textContent = state.role ? 'LOCAL · RECONNECTING' : 'NETWORK · OFFLINE'; });
   socket.on('connect_error', () => { document.getElementById('statusLabel').textContent = 'LOCAL MODE · NETWORK OFFLINE'; });
@@ -744,7 +730,6 @@ if (socket) {
     state.blindUntil = Math.max(state.blindUntil || 0, now + duration);
     state.blindStrength = Math.min(1, Math.max(Number(data.strength) || 1, state.blindStrength || 0));
   });
-  socket.on('pickups', list => { if (Array.isArray(list)) syncPickups(list); });
   socket.on('abilityFeedback', data => { if (data?.message) showNotice(data.message); });
 }
 
@@ -940,10 +925,6 @@ function animate() {
   }
   effects.update(dt);
   updateBlind(now);
-  for (const group of pickupMeshes.values()) {
-    group.userData.model.rotation.y += dt * 1.6;
-    group.userData.model.position.y = 1 + Math.sin(now / 400 + group.position.x) * 0.15;
-  }
   renderer.render(scene, camera);
 }
 setFloor(0);

@@ -17,10 +17,10 @@ A browser-based 3D multiplayer prototype inspired by a prison-asylum escape game
 All item stats live in `public/items.js`, which both the server and the browser load. Change a number there and restart the server.
 
 - **Use:** click (without dragging) or Space on desktop, the red USE button on touch screens. Pick an item with 1–6 or by tapping its slot; picking it again puts it away.
-- **Loot:** items spawn at fixed spots around the map and respawn 40 s after someone takes them. Walk over one to pick it up (max 6 slots).
+- **Vending machines:** items no longer lie around. 24 machines stand against the walls on every floor (`VENDING` in `layout.js`), each stocked from a loot pool. Press E in front of one and take what you need (max 6 slots). They are free for now (`VENDING_PRICE` in `server.js`); goods that sell for credits are left out.
 - **Status:** stunned players cannot move or use items, slowed players are slower, at 0 health a player is knocked out and respawns after 5 s with their starting loadout.
 - **Arrest:** staff can cuff a stunned or knocked-out patient, who goes back to the ward and is held for 8 s.
-- **78 items** in four loot pools (`patient`, `staff`, `medical`, `common` in `layout.js`). Besides weapons, throwables and med kits there are:
+- **78 items** in four pools (`patient`, `staff`, `medical`, `common` in `LOOT` in `layout.js`) that stock the vending machines. Besides weapons, throwables and med kits there are:
   - **Rays** that stun, damage, slow, net (can't walk, can still fight), blind or pull the target in.
   - **Pulses** around yourself (proximity taser, scream, rally flag), **shove** and **shoulder charge**.
   - **Zones:** fire, gas (hurts and slows; a gas mask protects), healing mist, and a signal jammer that switches off enemy items marked `electric` (tasers, launchers, the tablet's cameras).
@@ -42,11 +42,11 @@ All item stats live in `public/items.js`, which both the server and the browser 
 - **Chat:** Enter or T, Tab switches between your team and everyone. Staff talk over the radio, which a patient with a stolen radio can hear, alarms included.
 - **Vehicles** (`VEHICLES`): wheelchairs for anyone (one pushes, one rides), golf carts and a forklift for staff that run enemies over. They stay on their floor.
 - **Devices:** the orderly's combat drone follows and stuns, the recon drone and the director's hostile detector mark patients through walls, the medic's therapy turret heals staff. Patients can smash them.
-- **Staircases** are placed at random, but only where they cut nothing off: a walkability check keeps every doorway, spawn, loot spot and station reachable and the corridors clear.
+- **Staircases** are placed at random, but only where they cut nothing off: a walkability check keeps every doorway, spawn and station (vending machines included) reachable and the corridors clear.
 - The server decides every hit; the browser only shows what happened.
 
 ## Building
-The floor plan lives in `public/layout.js`, which both the server and the browser load: walls and doors, rooms, furniture positions, spawns, loot spots and the director's security cameras. `public/interior.js` turns it into meshes (merged per material, so a floor is a few dozen draw calls). The server uses the same walls to stop players walking through them and to block hits, blasts and throws behind walls.
+The floor plan lives in `public/layout.js`, which both the server and the browser load: walls and doors, rooms, furniture positions, spawns, vending machines and the director's security cameras. `public/interior.js` turns it into meshes (merged per material, so a floor is a few dozen draw calls). The server uses the same walls to stop players walking through them and to block hits, blasts and throws behind walls.
 
 ## Characters
 The four role models live in `public/assets/characters/*.glb` (about 0.2–0.5 MB each). They are built with Blender from the source STL sculpts by the scripts in `tools/character-pipeline`:

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 
 const STATION_VERBS = {
   shop: station => `Open ${station.label}`,
+  vending: station => `Use ${station.label}`,
   job: station => (station.job === 'laundry' ? 'Do laundry' : 'Paint'),
   breaker: (_station, power) => (power.out ? 'Restore power' : 'Cut the power'),
   exit: () => 'Try the exit',
@@ -54,7 +55,7 @@ export function createWorld(ctx) {
       button.type = 'button'; button.className = 'shop-item';
       button.disabled = entry.price > data.credits;
       const name = document.createElement('span'); name.textContent = ITEMS[entry.item]?.name ?? entry.item;
-      const price = document.createElement('b'); price.textContent = `${entry.price} ¢`;
+      const price = document.createElement('b'); price.textContent = entry.price ? `${entry.price} ¢` : 'Free';
       button.append(name, price);
       button.addEventListener('click', () => socket.emit('buy', { item: entry.item }));
       shopList.append(button);
@@ -289,11 +290,18 @@ export function createWorld(ctx) {
     chatForm.classList.remove('open');
     chatInput.blur();
   }
+  function switchChannel() {
+    channel = channel === 'all' ? 'team' : 'all';
+    chatChannel.textContent = channelName();
+  }
   chatInput.addEventListener('keydown', event => {
     event.stopPropagation();
     if (event.key === 'Escape') closeChat();
-    if (event.key === 'Tab') { event.preventDefault(); channel = channel === 'all' ? 'team' : 'all'; chatChannel.textContent = channelName(); }
+    if (event.key === 'Tab') { event.preventDefault(); switchChannel(); }
   });
+  // On phones there is no Tab key: tap the channel label instead (without closing the keyboard).
+  chatChannel.addEventListener('pointerdown', event => { event.preventDefault(); switchChannel(); chatInput.focus(); });
+  chatInput.addEventListener('blur', () => { if (!chatInput.value.trim()) chatForm.classList.remove('open'); });
   chatForm.addEventListener('submit', event => {
     event.preventDefault();
     const text = chatInput.value.trim();

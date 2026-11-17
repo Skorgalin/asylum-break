@@ -22,8 +22,8 @@
     patient: { floor: 2, x: -26, z: -9 }, // in cell WS3
   };
 
-  // Loot spots. Patient loot sits in patient areas, staff loot in staff rooms, snacks in the corridors.
-  // Pools may list an item more than once to make it more common.
+  // What the vending machines stock. Patient gear sits in patient areas, staff gear in staff rooms,
+  // snacks in the corridors. Pools may list an item more than once (that only matters for random loot).
   const LOOT = {
     patient: [
       'glassShard', 'tableLeg', 'tableLeg', 'scrapMetal', 'scrapMetal', 'crowbar', 'glassBlade', 'woodenBat', 'steelBat',
@@ -44,24 +44,28 @@
     ],
     common: ['coffee', 'coffee', 'tea', 'bread', 'bread', 'mango', 'candy', 'energySoda', 'tomato', 'snowball', 'smallMedicalKit', 'laundry', 'contraband'],
   };
-  const PICKUPS = [
-    { floor: 2, x: -30, z: 34, pool: 'patient' }, { floor: 2, x: 60, z: 28, pool: 'patient' },
-    { floor: 2, x: 22, z: 52, pool: 'patient' }, { floor: 2, x: 28, z: -40, pool: 'patient' },
-    { floor: 2, x: -70, z: -30, pool: 'patient' }, { floor: 2, x: 0, z: -40, pool: 'patient' },
-    { floor: 2, x: 72, z: -50, pool: 'patient' },
-    { floor: 1, x: -64, z: 40, pool: 'patient' }, { floor: 1, x: 50, z: -48, pool: 'patient' },
-    { floor: 0, x: -48, z: 16, pool: 'patient' }, { floor: 0, x: 30, z: 52, pool: 'patient' },
-    { floor: 1, x: -22, z: 16, pool: 'medical' }, { floor: 1, x: -20, z: -50, pool: 'medical' },
-    { floor: 1, x: 24, z: 14, pool: 'staff' }, { floor: 0, x: 22, z: -36, pool: 'staff' },
-    { floor: 0, x: 0, z: 30, pool: 'staff' },
-    // Corridors.
-    { floor: 2, x: -60, z: 0, pool: 'patient' }, { floor: 2, x: 60, z: 0, pool: 'patient' },
-    { floor: 2, x: 0, z: -25, pool: 'common' }, { floor: 2, x: 0, z: 25, pool: 'common' },
-    { floor: 1, x: -30, z: 0, pool: 'medical' }, { floor: 1, x: 30, z: 0, pool: 'common' },
-    { floor: 1, x: 0, z: -45, pool: 'staff' }, { floor: 1, x: 0, z: 45, pool: 'patient' },
-    { floor: 0, x: -60, z: 0, pool: 'staff' }, { floor: 0, x: 60, z: 0, pool: 'patient' },
-    { floor: 0, x: 0, z: -25, pool: 'common' }, { floor: 0, x: 0, z: 25, pool: 'staff' },
+  // Vending machines, each against a wall: `rot` turns its front away from the wall (0 faces +z, 1 +x,
+  // 2 -z, 3 -x). Press E in front of one to take an item from its pool, for free for now.
+  const VENDING_LABELS = { patient: 'Vending machine', staff: 'Supply machine', medical: 'Medical vending', common: 'Snack machine' };
+  const VENDING = [
+    // Patient ward.
+    { floor: 2, x: -6.4, z: 50, rot: 3, pool: 'patient' }, { floor: 2, x: 6.4, z: -24, rot: 1, pool: 'patient' },
+    { floor: 2, x: 30, z: 18.4, rot: 0, pool: 'patient' }, { floor: 2, x: -28, z: -18.4, rot: 2, pool: 'patient' },
+    { floor: 2, x: 75, z: -63.6, rot: 0, pool: 'patient' }, { floor: 2, x: 86, z: 48.6, rot: 2, pool: 'patient' },
+    { floor: 2, x: -87.6, z: -56, rot: 1, pool: 'medical' },
+    { floor: 2, x: -3.6, z: -55, rot: 1, pool: 'common' }, { floor: 2, x: 3.6, z: 55, rot: 3, pool: 'common' },
+    // Medical floor.
+    { floor: 1, x: -6.4, z: -28, rot: 3, pool: 'medical' }, { floor: 1, x: -38.6, z: -46, rot: 1, pool: 'medical' },
+    { floor: 1, x: -10, z: 6.4, rot: 0, pool: 'staff' }, { floor: 1, x: 80, z: -63.6, rot: 0, pool: 'staff' },
+    { floor: 1, x: 6.4, z: 34, rot: 1, pool: 'staff' }, { floor: 1, x: -6.4, z: 56, rot: 3, pool: 'patient' },
+    { floor: 1, x: 3.6, z: -58, rot: 3, pool: 'common' }, { floor: 1, x: 30, z: 3.6, rot: 2, pool: 'common' },
+    // Ground floor.
+    { floor: 0, x: -66.6, z: -30, rot: 1, pool: 'common' }, { floor: 0, x: -66.6, z: -24, rot: 1, pool: 'patient' },
+    { floor: 0, x: 38.6, z: -36, rot: 3, pool: 'staff' }, { floor: 0, x: 87.6, z: -50, rot: 3, pool: 'staff' },
+    { floor: 0, x: -10, z: 40.6, rot: 2, pool: 'common' }, { floor: 0, x: 87.6, z: 38, rot: 3, pool: 'patient' },
+    { floor: 0, x: -30, z: 3.6, rot: 2, pool: 'common' },
   ];
+  const FRONT = [[0, 1], [1, 0], [0, -1], [-1, 0]];
 
   // Things to press E at. Shops sell to one team; jobs need their item in your inventory; the breaker
   // cuts (patients) or restores (staff) the lights; the exit lets patients with a way out escape.
@@ -74,6 +78,10 @@
     { id: 'easelB', type: 'job', job: 'paint', label: 'Canvas', floor: 2, x: 12.4, z: -40 },
     { id: 'breaker', type: 'breaker', label: 'Breaker panel', floor: 0, x: 86, z: 20 },
     { id: 'exit', type: 'exit', label: 'Main exit', floor: 0, x: -36, z: -63.4 },
+    ...VENDING.map((machine, i) => ({
+      id: `vending${i}`, type: 'vending', pool: machine.pool, label: VENDING_LABELS[machine.pool], floor: machine.floor,
+      x: machine.x + FRONT[machine.rot][0] * 2.1, z: machine.z + FRONT[machine.rot][1] * 2.1,
+    })),
   ];
   const STATION_RANGE = 3.5;
 
@@ -174,7 +182,6 @@
     put(f, 'rug', -36, -28, 0, { w: 16, d: 12 });
     put(f, 'sofa', -36, -33, 0); put(f, 'coffeeTable', -36, -28); put(f, 'sofa', -36, -23, 2);
     for (const x of [-66, -7]) for (const z of [-63, -7.5]) put(f, 'plant', x, z);
-    put(f, 'vending', -66.6, -30, 1); put(f, 'vending', -66.6, -24, 1);
     for (const z of [-60, -52, -44, -28, -20]) put(f, 'lockers', -87.6, z, 1, { w: 7 });
     put(f, 'bench', -78, -36, 1, { w: 8 });
     // Security (SE): office, holding cell, equipment, staff lockers, janitor.
@@ -422,6 +429,8 @@
     put(f, 'crate', 60, -60); put(f, 'crate', 62.5, -57.5); put(f, 'crate', 60, -55); put(f, 'crate', 76, -36); put(f, 'crate', 66, -24);
   }
 
+  for (const machine of VENDING) put(machine.floor, 'vending', machine.x, machine.z, machine.rot);
+
   // ---- Collision ----------------------------------------------------------------------------
   // Footprints (width along x, depth along z, before turning) of the furniture that blocks movement.
   const FOOTPRINTS = {
@@ -508,11 +517,10 @@
     ...wallBoxes[floor],
     ...list.filter(item => item.type !== 'rug' && item.type !== 'mat').map(footprint).filter(Boolean),
   ]);
-  // Doorways, spawns and loot need room around them so a staircase never cuts anything off.
+  // Doorways, spawns and stations need room around them so a staircase never cuts anything off.
   const keepClear = FLOOR_Y.map((_, floor) => [
     ...walls[floor].flatMap(w => w.doors.map(door => (w.z1 === w.z2 ? { x: door.at, z: w.z1 } : { x: w.x1, z: door.at }))),
     ...Object.values(SPAWNS).filter(spawn => spawn.floor === floor),
-    ...PICKUPS.filter(spot => spot.floor === floor),
     ...STATIONS.filter(spot => spot.floor === floor),
     ...VEHICLES.filter(spot => spot.floor === floor),
     // The main corridor carries on straight through both end halls: a staircase there would stand in
@@ -523,7 +531,7 @@
 
   // Walkability on a half-unit grid (with a comfortable 2-unit wide berth, not just a squeeze), so a
   // staircase is only accepted if it cuts nothing off: every
-  // doorway, spawn, loot spot and station that could be reached before must still be reachable from
+  // doorway, spawn and station that could be reached before must still be reachable from
   // the corridor crossing, and so must both ends of every staircase.
   const GRID = 0.5, GRID_X = Math.ceil(180 / GRID), GRID_Z = Math.ceil(132 / GRID), REACH_RADIUS = 1;
   function stampBox(grid, box, margin = REACH_RADIUS) {
@@ -572,7 +580,6 @@
   const mustReach = FLOOR_Y.map((_, floor) => [
     ...walls[floor].flatMap(w => w.doors.filter(door => !door.closed).map(door => (w.z1 === w.z2 ? { x: door.at, z: w.z1 } : { x: w.x1, z: door.at }))),
     ...Object.values(SPAWNS).filter(spot => spot.floor === floor),
-    ...PICKUPS.filter(spot => spot.floor === floor),
     ...STATIONS.filter(spot => spot.floor === floor),
   ]);
   // Targets on `floor` that are reachable with `stairs` in place, including the stairs' own ends.
@@ -744,7 +751,7 @@
   const LAYOUT = {
     FLOOR_Y, FLOOR_NAMES, WALL_HEIGHT, WALL_THICKNESS, DOOR_WIDTH, DOOR_HEIGHT, BOUNDS, SEED, STAIR, STAIRS,
     stairBox, stairBody, stairLocal, stairMove, stairHeight, stairNeighbours,
-    SPAWNS, LOOT, PICKUPS, CAMERAS, STATIONS, STATION_RANGE, VEHICLE_TYPES, VEHICLES, SECURE_DOORS, segmentHitsBox, walls, rooms, furniture, signs, solids, wallBoxes, wallPieces, footprint, wallBetween,
+    SPAWNS, LOOT, CAMERAS, STATIONS, STATION_RANGE, VEHICLE_TYPES, VEHICLES, SECURE_DOORS, segmentHitsBox, walls, rooms, furniture, signs, solids, wallBoxes, wallPieces, footprint, wallBetween,
   };
   if (typeof module === 'object' && module.exports) module.exports = LAYOUT;
   else root.LAYOUT = LAYOUT;
